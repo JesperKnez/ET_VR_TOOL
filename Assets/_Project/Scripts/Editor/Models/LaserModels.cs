@@ -1,0 +1,884 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace EinsteinTelescope.Laser.Editor
+{
+    /// <summary>Material slots used by the generated models.</summary>
+    internal enum ModelMaterial
+    {
+        FusedSilica,
+        HrCoating,
+        Aluminium,
+        Steel,
+        AnodizedBlack,
+        HousingPaint,
+        WarningYellow,
+        WarningBlack,
+        Fibre,
+        Copper,
+        Sensor,
+        BlackGlass,
+        Gold,
+        MonitorPlastic,
+        ScreenGlass,
+        ScreenLines,
+        ScreenZone,
+        ScreenHeader,
+        Indicator,
+        FramePaint,
+        Rubber
+    }
+
+    /// <summary>A generated mesh plus the material for each of its submeshes.</summary>
+    internal readonly struct ModelPart
+    {
+        public ModelPart(Mesh mesh, ModelMaterial[] materials)
+        {
+            Mesh = mesh;
+            Materials = materials;
+        }
+
+        public Mesh Mesh { get; }
+        public ModelMaterial[] Materials { get; }
+    }
+
+    /// <summary>
+    /// Procedural models in the style of the Einstein Telescope / Virgo / LIGO hardware, at real size:
+    /// fused-silica test masses (62 cm x 30 cm, like ET-HF) with a coated face, hanging on four silica
+    /// fibres from a cross-shaped marionette, with a reaction mass carrying coil actuators behind them
+    /// and an earthquake-stop cage around them. The vacuum towers are modelled separately by the team.
+    /// Local frame of every optic: origin = centre of the optical surface, +Z = the direction the
+    /// coated face looks, +Y up. The floor is <see cref="BeamHeight"/> below the beam.
+    /// </summary>
+    internal static class LaserModels
+    {
+        /// <summary>Height of the beam above the floor (m). Everything stands on the floor.</summary>
+        public const float BeamHeight = 1.3f;
+
+        private const int Smooth = 72;   // segments for large round parts
+        private const int Medium = 32;
+        private const int Small = 16;
+
+        // ----- Suspended optics (moving part) ------------------------------------------------------
+
+        /// <summary>Height of the marionette (steering stage) above the optic centre.</summary>
+        public static float MarionetteHeight(float radius) => radius + 0.42f;
+
+        /// <summary>
+        /// The moving part of a suspended optic: the optic, its silica ears, four fibres, the cross-shaped
+        /// marionette with its actuators and, for test masses, the reaction mass with coil actuators behind.
+        /// </summary>
+        public static ModelPart SuspendedOptic(string name, float radius, float thickness, bool reactionMass)
+        {
+            var mats = new[] { ModelMaterial.FusedSilica, ModelMaterial.HrCoating, ModelMaterial.Steel, ModelMaterial.Fibre, ModelMaterial.Copper, ModelMaterial.AnodizedBlack, ModelMaterial.Aluminium };
+            const int silica = 0, coating = 1, steel = 2, fibre = 3, copper = 4, black = 5, alu = 6;
+            var b = new MeshBuilder(mats.Length);
+            Quaternion alongZ = MeshBuilder.AxisRotation(Vector3.forward);
+            float h = thickness * 0.5f;
+            float bevel = Mathf.Min(0.008f, thickness * 0.15f);
+            float coatingRadius = radius * 0.93f;
+
+            // Optic: bevelled fused-silica cylinder. The coated area is its own submesh; an uncoated rim remains.
+            b.AddLathe(silica, new List<Vector2>
+            {
+                new Vector2(0f, -h), new Vector2(radius - bevel, -h), new Vector2(radius, -h + bevel),
+                new Vector2(radius, h - bevel), new Vector2(radius - bevel, h), new Vector2(coatingRadius, h)
+            }, Vector3.zero, alongZ, Smooth);
+            b.AddLathe(coating, new List<Vector2> { new Vector2(coatingRadius, h + 0.0004f), new Vector2(0f, h + 0.0004f) }, Vector3.zero, alongZ, Smooth);
+
+            // Silica ears bonded to the flats, each with two horns for the fibres.
+            float earX = radius + 0.008f;
+            float earHalfWidth = Mathf.Min(0.045f, h * 0.9f);
+            var earShape = new List<Vector2>
+            {
+                new Vector2(-earHalfWidth, -0.035f), new Vector2(earHalfWidth, -0.035f), new Vector2(earHalfWidth * 0.66f, 0.03f), new Vector2(-earHalfWidth * 0.66f, 0.03f)
+            };
+            float hornZ = earHalfWidth * 0.45f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                b.AddExtrudedPolygon(silica, earShape, 0.016f, new Vector3(side * earX, 0f, 0f), Quaternion.LookRotation(Vector3.right, Vector3.up));
+                foreach (float zSide in new[] { -1f, 1f })
+                {
+                    b.AddCylinder(silica, new Vector3(side * earX, 0.036f, zSide * hornZ), Vector3.up, 0.0045f, 0.012f, Small, 0.001f);
+                }
+            }
+
+            // Marionette (Virgo-style steering stage): hub with four arms and coil-magnet actuators.
+            float marionetteY = MarionetteHeight(radius);
+            float armReachX = earX + 0.05f;
+            b.AddCylinder(steel, new Vector3(0f, marionetteY, 0f), Vector3.up, 0.09f, 0.07f, Medium, 0.008f);
+            b.AddCylinder(alu, new Vector3(0f, marionetteY + 0.045f, 0f), Vector3.up, 0.045f, 0.02f, Medium, 0.003f);
+            b.AddRoundedBox(steel, new Vector3(0f, marionetteY, 0f), new Vector3(2f * armReachX, 0.04f, 0.055f), Quaternion.identity, 0.008f, 3);
+            float armReachZ = reactionMass ? h + 0.12f : 0.14f;
+            b.AddRoundedBox(steel, new Vector3(0f, marionetteY, (armReachZ - 0.12f) * 0.5f - 0.06f), new Vector3(0.055f, 0.04f, armReachZ + 0.12f), Quaternion.identity, 0.008f, 3);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                // Fibre clamps under the X arms.
+                Vector3 clamp = new Vector3(side * earX, marionetteY - 0.032f, 0f);
+                b.AddRoundedBox(alu, clamp, new Vector3(0.035f, 0.025f, 2f * hornZ + 0.03f), Quaternion.identity, 0.003f, 2);
+                AddScrew(b, steel, black, clamp + new Vector3(side * 0.0185f, 0f, 0f), side * Vector3.right, 0.004f);
+
+                // Coil actuators at the arm tips.
+                Vector3 tip = new Vector3(side * (armReachX + 0.01f), marionetteY, 0f);
+                b.AddCylinder(copper, tip + new Vector3(0f, 0.035f, 0f), Vector3.up, 0.018f, 0.03f, Medium, 0.002f);
+                b.AddCylinder(black, tip + new Vector3(0f, 0.056f, 0f), Vector3.up, 0.02f, 0.008f, Medium, 0.002f);
+            }
+
+            b.AddCylinder(copper, new Vector3(0f, marionetteY + 0.035f, armReachZ - 0.02f), Vector3.up, 0.016f, 0.03f, Medium, 0.002f);
+            b.AddCylinder(black, new Vector3(0f, marionetteY + 0.054f, armReachZ - 0.02f), Vector3.up, 0.018f, 0.008f, Medium, 0.002f);
+
+            // Four silica fibres from the ear horns up to the marionette clamps.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                foreach (float zSide in new[] { -1f, 1f })
+                {
+                    b.AddCylinderBetween(fibre, new Vector3(side * earX, 0.042f, zSide * hornZ), new Vector3(side * earX, marionetteY - 0.045f, zSide * hornZ), 0.0016f, 8);
+                }
+            }
+
+            if (reactionMass)
+            {
+                // Reaction mass: a ring behind the optic with four coil actuators that push on magnets glued to the optic.
+                float ringZ = -h - 0.045f;
+                float ringInner = radius * 0.68f, ringOuter = radius * 1.12f;
+                b.AddLathe(black, new List<Vector2>
+                {
+                    new Vector2(ringInner, -0.02f), new Vector2(ringOuter - 0.006f, -0.02f), new Vector2(ringOuter, -0.014f),
+                    new Vector2(ringOuter, 0.014f), new Vector2(ringOuter - 0.006f, 0.02f), new Vector2(ringInner + 0.004f, 0.02f), new Vector2(ringInner, 0.016f)
+                }, new Vector3(0f, 0f, ringZ), alongZ, Smooth, 30f, 0f, 360f, true);
+
+                float coilRadius = radius * 0.84f;
+                for (int i = 0; i < 4; i++)
+                {
+                    float a = (45f + 90f * i) * Mathf.Deg2Rad;
+                    var p = new Vector3(Mathf.Cos(a) * coilRadius, Mathf.Sin(a) * coilRadius, 0f);
+                    b.AddCylinder(alu, p + new Vector3(0f, 0f, ringZ + 0.026f), Vector3.forward, 0.022f, 0.012f, Medium, 0.002f);
+                    b.AddCylinder(copper, p + new Vector3(0f, 0f, ringZ + 0.038f), Vector3.forward, 0.015f, 0.016f, Medium, 0.002f);
+                    b.AddCylinder(steel, p + new Vector3(0f, 0f, -h - 0.003f), Vector3.forward, 0.007f, 0.006f, Small, 0.001f);
+                }
+
+                // Hanging wires from the ring to a crossbar on the marionette's rear arm.
+                float wireX = ringOuter * 0.45f;
+                float ringTopY = Mathf.Sqrt(ringOuter * ringOuter - wireX * wireX) - 0.004f;
+                b.AddRoundedBox(steel, new Vector3(0f, marionetteY - 0.03f, ringZ), new Vector3(2f * wireX + 0.05f, 0.022f, 0.035f), Quaternion.identity, 0.004f, 2);
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    b.AddCylinderBetween(steel, new Vector3(side * wireX, ringTopY, ringZ), new Vector3(side * wireX, marionetteY - 0.041f, ringZ), 0.0014f, 8);
+                    b.AddCylinder(steel, new Vector3(side * wireX, ringTopY + 0.004f, ringZ), Vector3.up, 0.006f, 0.01f, Small, 0.001f);
+                }
+            }
+
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        // ----- Suspended optics (static part) ------------------------------------------------------
+
+        /// <summary>Half distance between the frame legs.</summary>
+        public static float FrameLegX(float opticRadius) => opticRadius + 0.3f;
+
+        /// <summary>Height of the top of the frame above the optic centre.</summary>
+        public static float FrameTop(float opticRadius) => MarionetteHeight(opticRadius) + 0.42f;
+
+        /// <summary>
+        /// Static gantry the optic hangs from, standing on the floor, with an earthquake-stop cage around a
+        /// test mass. Remove it when the optic goes inside a vacuum tower: the top wire then hangs from the tower.
+        /// </summary>
+        public static ModelPart SuspensionFrame(string name, float opticRadius, float opticThickness, bool cage)
+        {
+            var mats = new[] { ModelMaterial.FramePaint, ModelMaterial.Steel, ModelMaterial.AnodizedBlack, ModelMaterial.Aluminium, ModelMaterial.WarningYellow, ModelMaterial.Rubber };
+            const int paint = 0, steel = 1, black = 2, alu = 3, yellow = 4, rubber = 5;
+            var b = new MeshBuilder(mats.Length);
+
+            float legX = FrameLegX(opticRadius);
+            float top = FrameTop(opticRadius);
+            float floor = -BeamHeight;
+            const float flange = 0.1f, depth = 0.1f;
+
+            foreach (float side in new[] { -1f, 1f })
+            {
+                // I-beam leg on a base plate with anchor bolts and rubber pads.
+                AddIBeam(b, paint, new Vector3(side * legX, (floor + top - 0.1f) * 0.5f + 0.02f, 0f), Quaternion.identity, top - 0.1f - floor - 0.04f, flange, depth, 0.008f, 0.006f);
+                b.AddRoundedBox(steel, new Vector3(side * legX, floor + 0.025f, 0f), new Vector3(0.26f, 0.018f, 0.34f), Quaternion.identity, 0.004f, 2);
+                for (int i = 0; i < 4; i++)
+                {
+                    float bx = side * legX + (i % 2 == 0 ? -0.1f : 0.1f);
+                    float bz = i < 2 ? -0.14f : 0.14f;
+                    AddScrew(b, steel, black, new Vector3(bx, floor + 0.034f, bz), Vector3.up, 0.011f);
+                    b.AddCylinder(rubber, new Vector3(bx, floor + 0.008f, bz), Vector3.up, 0.02f, 0.016f, Small, 0.003f);
+                }
+
+                // Diagonal brace from leg to top beam.
+                b.AddCylinderBetween(paint, new Vector3(side * legX, top - 0.55f, -0.035f), new Vector3(side * (legX - 0.4f), top - 0.1f, -0.035f), 0.012f, Small);
+                b.AddCylinderBetween(paint, new Vector3(side * legX, top - 0.55f, 0.035f), new Vector3(side * (legX - 0.4f), top - 0.1f, 0.035f), 0.012f, Small);
+            }
+
+            // Top I-beam, lifting eyes and a warning stripe.
+            AddIBeam(b, paint, new Vector3(0f, top - 0.05f, 0f), Quaternion.Euler(0f, 0f, 90f), 2f * legX + 0.12f, flange, depth, 0.008f, 0.006f);
+            b.AddBox(yellow, new Vector3(0f, top - 0.05f, depth * 0.5f + 0.0005f), new Vector3(0.5f, 0.06f, 0.001f), Quaternion.identity);
+            foreach (float x in new[] { -legX * 0.6f, legX * 0.6f })
+            {
+                b.AddTorus(steel, new Vector3(x, top + 0.03f, 0f), Vector3.forward, 0.022f, 0.006f, Medium, 10);
+            }
+
+            // Suspension point: clamp under the top beam and the single steel wire down to the marionette.
+            float marionetteTop = MarionetteHeight(opticRadius) + 0.055f;
+            b.AddRoundedBox(black, new Vector3(0f, top - 0.125f, 0f), new Vector3(0.09f, 0.05f, 0.09f), Quaternion.identity, 0.006f, 2);
+            AddScrew(b, steel, black, new Vector3(0.0455f, top - 0.125f, 0f), Vector3.right, 0.006f);
+            b.AddCylinderBetween(steel, new Vector3(0f, top - 0.15f, 0f), new Vector3(0f, marionetteTop, 0f), 0.0025f, 10);
+            b.AddCylinder(steel, new Vector3(0f, marionetteTop + 0.008f, 0f), Vector3.up, 0.01f, 0.016f, Small, 0.002f);
+
+            if (cage)
+            {
+                AddEarthquakeCage(b, alu, steel, rubber, opticRadius, opticThickness);
+            }
+
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>
+        /// Safety cage around a test mass with earthquake stops: screws with soft tips a few centimetres from
+        /// the optic that catch it if the suspension swings too far (as in LIGO and Virgo).
+        /// </summary>
+        private static void AddEarthquakeCage(MeshBuilder b, int alu, int steel, int rubber, float radius, float thickness)
+        {
+            float x = radius + 0.1f;
+            float z = thickness * 0.5f + 0.12f;
+            float yBottom = -radius - 0.16f, yTop = radius + 0.13f;
+            const float bar = 0.03f;
+
+            foreach (float sx in new[] { -1f, 1f })
+            {
+                foreach (float sz in new[] { -1f, 1f })
+                {
+                    b.AddRoundedBox(alu, new Vector3(sx * x, (yBottom + yTop) * 0.5f, sz * z), new Vector3(bar, yTop - yBottom, bar), Quaternion.identity, 0.004f, 2);
+                }
+
+                // Side bars carry the stops that face the barrel of the optic.
+                b.AddRoundedBox(alu, new Vector3(sx * x, (yBottom + yTop) * 0.5f, 0f), new Vector3(bar, yTop - yBottom, bar), Quaternion.identity, 0.004f, 2);
+                foreach (float y in new[] { -radius * 0.55f, radius * 0.55f })
+                {
+                    Vector3 from = new Vector3(sx * x, y, 0f);
+                    Vector3 to = new Vector3(sx * (radius + 0.035f), y, 0f);
+                    b.AddCylinderBetween(steel, from, to, 0.006f, Small);
+                    b.AddCylinder(rubber, to - sx * new Vector3(0.004f, 0f, 0f), Vector3.right, 0.008f, 0.008f, Small, 0.002f);
+                }
+
+                // Under the optic: two stops pointing up.
+                foreach (float sz in new[] { -1f, 1f })
+                {
+                    float stopZ = sz * Mathf.Min(0.08f, thickness * 0.3f);
+                    b.AddCylinderBetween(steel, new Vector3(sx * radius * 0.4f, yBottom, stopZ), new Vector3(sx * radius * 0.4f, -Mathf.Sqrt(radius * radius - radius * radius * 0.16f) - 0.035f, stopZ), 0.006f, Small);
+                }
+            }
+
+            // Bottom and top rectangles tying the bars together.
+            foreach (float y in new[] { yBottom, yTop })
+            {
+                // No middle bar on top: the fibres pass there.
+                float[] bars = y == yBottom ? new[] { -1f, 0f, 1f } : new[] { -1f, 1f };
+                foreach (float sz in bars)
+                {
+                    b.AddRoundedBox(alu, new Vector3(0f, y, sz * z), new Vector3(2f * x + bar, bar, bar), Quaternion.identity, 0.004f, 2);
+                }
+
+                foreach (float sx in new[] { -1f, 1f })
+                {
+                    b.AddRoundedBox(alu, new Vector3(sx * x, y, 0f), new Vector3(bar, bar, 2f * z + bar), Quaternion.identity, 0.004f, 2);
+                }
+            }
+
+            // Cage hangs from the frame on two rods.
+            float top = FrameTop(radius) - 0.1f;
+            foreach (float sx in new[] { -1f, 1f })
+            {
+                b.AddCylinderBetween(steel, new Vector3(sx * x, yTop, 0f), new Vector3(sx * x, top, 0f), 0.008f, Small);
+            }
+        }
+
+        // ----- Laser ------------------------------------------------------------------------------
+
+        private const float LaserBodyZ = -0.225f;
+        private const float LaserBodyLength = 0.4f;
+
+        /// <summary>Pre-stabilised laser head on a floor pedestal. Beam exits at the origin along +Z.</summary>
+        public static ModelPart LaserHead(string name)
+        {
+            var mats = new[] { ModelMaterial.HousingPaint, ModelMaterial.AnodizedBlack, ModelMaterial.Aluminium, ModelMaterial.WarningYellow, ModelMaterial.WarningBlack, ModelMaterial.Steel, ModelMaterial.Gold, ModelMaterial.Rubber };
+            const int paint = 0, black = 1, alu = 2, yellow = 3, warnBlack = 4, steel = 5, gold = 6, rubber = 7;
+            var b = new MeshBuilder(mats.Length);
+            Quaternion alongZ = MeshBuilder.AxisRotation(Vector3.forward);
+            float back = LaserBodyZ - LaserBodyLength * 0.5f;
+
+            // Housing with a lid seam.
+            b.AddRoundedBox(paint, new Vector3(0f, 0f, LaserBodyZ), new Vector3(0.17f, 0.12f, LaserBodyLength), Quaternion.identity, 0.012f, 4);
+            b.AddBox(warnBlack, new Vector3(0f, 0.034f, LaserBodyZ), new Vector3(0.1704f, 0.0015f, LaserBodyLength - 0.02f), Quaternion.identity);
+
+            // Heat sink with fins.
+            b.AddRoundedBox(black, new Vector3(0f, 0.063f, LaserBodyZ - 0.01f), new Vector3(0.15f, 0.008f, 0.3f), Quaternion.identity, 0.002f, 1);
+            for (int i = 0; i < 13; i++)
+            {
+                b.AddRoundedBox(black, new Vector3(-0.066f + i * 0.011f, 0.08f, LaserBodyZ - 0.01f), new Vector3(0.004f, 0.028f, 0.29f), Quaternion.identity, 0.0015f, 1);
+            }
+
+            // Front panel with corner screws, aperture nozzle and shutter actuator.
+            b.AddRoundedBox(alu, new Vector3(0f, 0f, -0.022f), new Vector3(0.18f, 0.13f, 0.012f), Quaternion.identity, 0.004f, 2);
+            foreach (float x in new[] { -0.078f, 0.078f })
+            {
+                foreach (float y in new[] { -0.053f, 0.053f })
+                {
+                    AddScrew(b, steel, black, new Vector3(x, y, -0.0155f), Vector3.forward, 0.004f);
+                }
+            }
+
+            b.AddLathe(black, new List<Vector2>
+            {
+                new Vector2(0.006f, -0.006f), new Vector2(0.021f, -0.006f), new Vector2(0.021f, 0.002f), new Vector2(0.018f, 0.005f), new Vector2(0.006f, 0.005f)
+            }, new Vector3(0f, 0f, -0.0105f), alongZ, Medium, 30f, 0f, 360f, true);
+            b.AddTorus(alu, new Vector3(0f, 0f, -0.012f), Vector3.forward, 0.021f, 0.0015f, Medium, 8);
+            b.AddCylinder(warnBlack, new Vector3(0f, 0f, -0.0098f), Vector3.forward, 0.0062f, 0.0006f, Small);
+            b.AddCylinder(black, new Vector3(0.052f, 0.03f, -0.006f), Vector3.forward, 0.012f, 0.02f, Medium, 0.002f);
+            b.AddCylinderBetween(steel, new Vector3(0.052f, 0.042f, -0.006f), new Vector3(0.052f, 0.06f, -0.006f), 0.0025f, 8);
+            b.AddCylinder(rubber, new Vector3(0.052f, 0.064f, -0.006f), Vector3.up, 0.006f, 0.01f, Small, 0.002f);
+            // "Laser aperture" label below the nozzle.
+            b.AddRoundedBox(yellow, new Vector3(0f, -0.038f, -0.0158f), new Vector3(0.06f, 0.016f, 0.001f), Quaternion.identity, 0f, 0);
+            b.AddExtrudedPolygon(warnBlack, Triangle(0.012f), 0.0012f, new Vector3(-0.022f, -0.038f, -0.0153f), Quaternion.identity);
+            for (int i = 0; i < 3; i++)
+            {
+                b.AddBox(warnBlack, new Vector3(0.008f + i * 0.012f, -0.038f, -0.0153f), new Vector3(0.009f, 0.0018f, 0.0006f), Quaternion.identity);
+            }
+
+            // Side: rating plate with "text" lines and a laser warning triangle.
+            Quaternion facingRight = Quaternion.LookRotation(Vector3.right, Vector3.up);
+            float sideX = 0.0852f;
+            b.AddRoundedBox(alu, new Vector3(sideX, -0.01f, LaserBodyZ - 0.08f), new Vector3(0.001f, 0.05f, 0.11f), Quaternion.identity, 0f, 0);
+            for (int i = 0; i < 5; i++)
+            {
+                float width = i == 0 ? 0.07f : 0.05f + 0.01f * (i % 3);
+                b.AddBox(warnBlack, new Vector3(sideX + 0.0007f, 0.008f - i * 0.008f, LaserBodyZ - 0.08f - (0.09f - width) * 0.5f), new Vector3(0.0004f, i == 0 ? 0.004f : 0.0025f, width), Quaternion.identity);
+            }
+
+            b.AddExtrudedPolygon(warnBlack, Triangle(0.056f), 0.001f, new Vector3(sideX, 0.0f, LaserBodyZ + 0.08f), facingRight);
+            b.AddExtrudedPolygon(yellow, Triangle(0.047f), 0.001f, new Vector3(sideX + 0.001f, 0.0f, LaserBodyZ + 0.08f), facingRight);
+            b.AddCylinder(warnBlack, new Vector3(sideX + 0.0017f, -0.004f, LaserBodyZ + 0.08f), Vector3.right, 0.0055f, 0.0006f, Small);
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * 45f * Mathf.Deg2Rad;
+                Vector3 dir = new Vector3(0f, Mathf.Sin(a), Mathf.Cos(a));
+                b.AddBox(warnBlack, new Vector3(sideX + 0.0017f, -0.004f, LaserBodyZ + 0.08f) + dir * 0.009f, new Vector3(0.0006f, 0.0012f, 0.006f), Quaternion.LookRotation(Vector3.right, dir));
+            }
+
+            // Rear panel: power socket, D-sub, two BNCs and a key switch.
+            b.AddRoundedBox(alu, new Vector3(0f, 0f, back - 0.004f), new Vector3(0.16f, 0.11f, 0.008f), Quaternion.identity, 0.003f, 2);
+            b.AddCylinder(black, new Vector3(-0.045f, -0.02f, back - 0.016f), Vector3.forward, 0.012f, 0.018f, Medium, 0.002f);
+            b.AddRoundedBox(black, new Vector3(0.0f, -0.025f, back - 0.012f), new Vector3(0.04f, 0.014f, 0.01f), Quaternion.identity, 0.003f, 2);
+            AddScrew(b, steel, black, new Vector3(-0.026f, -0.025f, back - 0.009f), Vector3.back, 0.003f);
+            AddScrew(b, steel, black, new Vector3(0.026f, -0.025f, back - 0.009f), Vector3.back, 0.003f);
+            foreach (float x in new[] { 0.04f, 0.062f })
+            {
+                b.AddCylinder(gold, new Vector3(x, -0.025f, back - 0.018f), Vector3.forward, 0.005f, 0.02f, Small, 0.001f);
+                b.AddCylinder(alu, new Vector3(x, -0.025f, back - 0.01f), Vector3.forward, 0.008f, 0.006f, 6, 0.0005f);
+            }
+
+            b.AddCylinder(steel, new Vector3(-0.045f, 0.025f, back - 0.012f), Vector3.forward, 0.009f, 0.01f, Medium, 0.002f);
+            b.AddBox(warnBlack, new Vector3(-0.045f, 0.025f, back - 0.0172f), new Vector3(0.002f, 0.009f, 0.0005f), Quaternion.identity);
+
+            // Power cable from the rear socket down to the floor.
+            float floor = -BeamHeight;
+            b.AddSweptTube(rubber, new List<Vector3>
+            {
+                new Vector3(-0.045f, -0.02f, back - 0.025f), new Vector3(-0.045f, -0.025f, back - 0.07f), new Vector3(-0.045f, -0.08f, back - 0.11f),
+                new Vector3(-0.04f, -0.3f, back - 0.13f), new Vector3(-0.035f, -0.8f, back - 0.14f), new Vector3(-0.03f, floor + 0.1f, back - 0.15f),
+                new Vector3(-0.02f, floor + 0.008f, back - 0.22f), new Vector3(0.0f, floor + 0.008f, back - 0.3f)
+            }, 0.005f, 10);
+
+            // Base plate and floor pedestal.
+            b.AddRoundedBox(black, new Vector3(0f, -0.067f, LaserBodyZ), new Vector3(0.2f, 0.012f, 0.44f), Quaternion.identity, 0.003f, 2);
+            foreach (float x in new[] { -0.088f, 0.088f })
+            {
+                foreach (float z in new[] { LaserBodyZ - 0.2f, LaserBodyZ + 0.2f })
+                {
+                    AddScrew(b, steel, black, new Vector3(x, -0.0605f, z), Vector3.up, 0.004f);
+                }
+            }
+
+            AddPedestal(b, steel, black, alu, rubber, 0f, LaserBodyZ, -0.073f, 0.045f);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>
+        /// Laser emission indicator, visible from behind and above: a beacon dome on the back of the housing and a
+        /// light strip on the rear panel. Colour is driven by <c>LaserStatusLight</c>.
+        /// </summary>
+        public static ModelPart LaserEmissionIndicator(string name)
+        {
+            var b = new MeshBuilder(1);
+            float back = LaserBodyZ - LaserBodyLength * 0.5f;
+            b.AddLathe(0, new List<Vector2>
+            {
+                new Vector2(0f, 0f), new Vector2(0.02f, 0f), new Vector2(0.02f, 0.012f), new Vector2(0.017f, 0.022f),
+                new Vector2(0.01f, 0.029f), new Vector2(0f, 0.031f)
+            }, new Vector3(0.05f, 0.06f, back + 0.02f), Quaternion.identity, Medium, 40f);
+            b.AddRoundedBox(0, new Vector3(0.025f, 0.03f, back - 0.0095f), new Vector3(0.09f, 0.014f, 0.004f), Quaternion.identity, 0.002f, 2);
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        // ----- Detector, iris, beam dump ----------------------------------------------------------
+
+        /// <summary>Quadrant photodiode head with a lens tube and outputs, on a post and floor pedestal. Sensor plane at z = 0.</summary>
+        public static ModelPart QuadrantPhotodiode(string name, float sensorRadius)
+        {
+            var mats = new[] { ModelMaterial.AnodizedBlack, ModelMaterial.Aluminium, ModelMaterial.Sensor, ModelMaterial.Steel, ModelMaterial.Gold, ModelMaterial.Rubber, ModelMaterial.WarningBlack };
+            const int black = 0, alu = 1, sensor = 2, steel = 3, gold = 4, rubber = 5, ink = 6;
+            var b = new MeshBuilder(mats.Length);
+            Vector3 forward = Vector3.forward;
+
+            b.AddRoundedBox(alu, new Vector3(0f, 0f, -0.0305f), new Vector3(0.11f, 0.11f, 0.051f), Quaternion.identity, 0.008f, 3);
+            b.AddRoundedBox(black, new Vector3(0f, 0f, -0.0055f), new Vector3(0.096f, 0.096f, 0.002f), Quaternion.identity, 0.004f, 2);
+
+            // Four sensor quadrants with small gaps, on a black backing.
+            b.AddAnnulus(black, new Vector3(0f, 0f, -0.0042f), forward, 0f, sensorRadius + 0.004f, Smooth);
+            for (int q = 0; q < 4; q++)
+            {
+                b.AddAnnulus(sensor, new Vector3(0f, 0f, -0.004f), forward, 0f, sensorRadius, 18, 1.5f + 90f * q, 87f);
+            }
+
+            // Lens tube with retaining rings.
+            float tubeInner = sensorRadius + 0.003f, tubeOuter = sensorRadius + 0.009f;
+            b.AddTube(black, new Vector3(0f, 0f, 0.0225f), forward, tubeInner, tubeOuter, 0.055f, Smooth);
+            foreach (float z in new[] { 0.008f, 0.018f, 0.04f })
+            {
+                b.AddTorus(black, new Vector3(0f, 0f, z), forward, tubeOuter, 0.0016f, Smooth, 8);
+            }
+
+            b.AddTube(alu, new Vector3(0f, 0f, 0.002f), forward, tubeOuter, tubeOuter + 0.004f, 0.01f, Smooth);
+
+            // Thumbscrews on the sides.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                b.AddCylinder(rubber, new Vector3(side * 0.062f, 0.02f, -0.03f), Vector3.right, 0.008f, 0.01f, Small, 0.002f);
+                b.AddCylinderBetween(steel, new Vector3(side * 0.055f, 0.02f, -0.03f), new Vector3(side * 0.058f, 0.02f, -0.03f), 0.003f, 8);
+            }
+
+            // Back: label, SMA outputs and power socket.
+            float back = -0.056f;
+            b.AddRoundedBox(black, new Vector3(0f, 0f, back - 0.001f), new Vector3(0.096f, 0.096f, 0.002f), Quaternion.identity, 0.004f, 2);
+            foreach (float x in new[] { -0.028f, 0.0f, 0.028f })
+            {
+                b.AddCylinder(gold, new Vector3(x, -0.02f, back - 0.01f), Vector3.forward, 0.004f, 0.016f, Small, 0.0008f);
+                b.AddCylinder(alu, new Vector3(x, -0.02f, back - 0.004f), Vector3.forward, 0.0065f, 0.005f, 6, 0.0005f);
+            }
+
+            b.AddCylinder(black, new Vector3(0.03f, -0.04f, back - 0.007f), Vector3.forward, 0.007f, 0.012f, Medium, 0.0015f);
+            b.AddBox(ink, new Vector3(-0.015f, -0.04f, back - 0.0022f), new Vector3(0.04f, 0.006f, 0.0004f), Quaternion.identity);
+
+            // 1/2" post in a post holder on a floor pedestal.
+            b.AddCylinderBetween(steel, new Vector3(0f, -0.2f, -0.03f), new Vector3(0f, -0.056f, -0.03f), 0.00635f, Medium);
+            b.AddLathe(alu, new List<Vector2>
+            {
+                new Vector2(0.0066f, 0f), new Vector2(0.0125f, 0f), new Vector2(0.0125f, 0.07f), new Vector2(0.011f, 0.075f), new Vector2(0.0066f, 0.075f)
+            }, new Vector3(0f, -0.25f, -0.03f), Quaternion.identity, Medium, 30f, 0f, 360f, true);
+            b.AddCylinder(rubber, new Vector3(0.016f, -0.2f, -0.03f), Vector3.right, 0.0045f, 0.009f, Small, 0.0015f);
+            AddPedestal(b, steel, black, alu, rubber, 0f, -0.03f, -0.25f, 0.035f);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>Glowing ring at the front of the photodiode lens tube (the status light the beam side sees).</summary>
+        public static ModelPart StatusRing(string name, float sensorRadius)
+        {
+            var b = new MeshBuilder(1);
+            b.AddTorus(0, new Vector3(0f, 0f, 0.0505f), Vector3.forward, sensorRadius + 0.006f, 0.0032f, Smooth, 12);
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        /// <summary>Status light on the BACK of the photodiode, facing the operator: a ring and a bar.</summary>
+        public static ModelPart StatusLightBack(string name)
+        {
+            var b = new MeshBuilder(1);
+            float back = -0.056f;
+            b.AddTorus(0, new Vector3(0f, 0.022f, back - 0.003f), Vector3.back, 0.016f, 0.0035f, Medium, 10);
+            b.AddCylinder(0, new Vector3(0f, 0.022f, back - 0.002f), Vector3.forward, 0.009f, 0.003f, Medium, 0.001f);
+            b.AddRoundedBox(0, new Vector3(0f, 0.062f, -0.03f), new Vector3(0.05f, 0.006f, 0.02f), Quaternion.identity, 0.002f, 2);
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        /// <summary>Iris diaphragm on a post and floor pedestal. Aperture plane at z = 0.</summary>
+        public static ModelPart Iris(string name, float holeRadius)
+        {
+            var mats = new[] { ModelMaterial.AnodizedBlack, ModelMaterial.Aluminium, ModelMaterial.Steel, ModelMaterial.Rubber };
+            const int black = 0, alu = 1, steel = 2, rubber = 3;
+            var b = new MeshBuilder(mats.Length);
+            Vector3 forward = Vector3.forward;
+
+            b.AddTube(alu, Vector3.zero, forward, 0.031f, 0.042f, 0.014f, Smooth);
+            for (int i = 0; i < 48; i++)
+            {
+                // Knurled outer edge.
+                float a = i * 7.5f * Mathf.Deg2Rad;
+                b.AddBox(alu, new Vector3(Mathf.Cos(a) * 0.0425f, Mathf.Sin(a) * 0.0425f, 0f), new Vector3(0.0018f, 0.0018f, 0.01f), Quaternion.AngleAxis(i * 7.5f, Vector3.forward));
+            }
+
+            // Ten overlapping blades in two layers form the adjustable hole.
+            for (int i = 0; i < 10; i++)
+            {
+                float z = (i % 2 == 0 ? 0.0012f : 0.0018f);
+                b.AddAnnulus(black, new Vector3(0f, 0f, z), forward, holeRadius, 0.031f, 12, i * 36f, 44f);
+                b.AddAnnulus(black, new Vector3(0f, 0f, -z), Vector3.back, holeRadius, 0.031f, 12, i * 36f, 44f);
+            }
+
+            b.AddTube(steel, Vector3.zero, forward, holeRadius, holeRadius + 0.0008f, 0.004f, Smooth);
+
+            // Adjustment lever with scale marks.
+            float leverAngle = 50f * Mathf.Deg2Rad;
+            var leverBase = new Vector3(Mathf.Cos(leverAngle) * 0.042f, Mathf.Sin(leverAngle) * 0.042f, 0f);
+            var leverTip = new Vector3(Mathf.Cos(leverAngle) * 0.064f, Mathf.Sin(leverAngle) * 0.064f, 0f);
+            b.AddCylinderBetween(steel, leverBase, leverTip, 0.002f, 8);
+            b.AddCylinder(rubber, leverTip, leverTip.normalized, 0.0045f, 0.01f, Small, 0.0015f);
+            for (int i = 0; i < 7; i++)
+            {
+                float a = (35f + i * 5f) * Mathf.Deg2Rad;
+                b.AddBox(black, new Vector3(Mathf.Cos(a) * 0.037f, Mathf.Sin(a) * 0.037f, 0.0072f), new Vector3(0.006f, 0.0008f, 0.0004f), Quaternion.AngleAxis(35f + i * 5f, Vector3.forward));
+            }
+
+            b.AddCylinderBetween(steel, new Vector3(0f, -0.2f, 0f), new Vector3(0f, -0.042f, 0f), 0.00635f, Medium);
+            b.AddCylinder(alu, new Vector3(0f, -0.225f, 0f), Vector3.up, 0.0125f, 0.05f, Medium, 0.002f);
+            AddPedestal(b, steel, black, alu, rubber, 0f, 0f, -0.25f, 0.03f);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>Beam dump: black-glass V trap inside an open housing with cooling fins, on a pedestal. Centred on its opening.</summary>
+        public static ModelPart BeamDump(string name)
+        {
+            var mats = new[] { ModelMaterial.AnodizedBlack, ModelMaterial.BlackGlass, ModelMaterial.Aluminium, ModelMaterial.Steel, ModelMaterial.Rubber };
+            const int black = 0, glass = 1, alu = 2, steel = 3, rubber = 4;
+            var b = new MeshBuilder(mats.Length);
+
+            const float w = 0.09f, depth = 0.11f, wall = 0.008f, cz = -0.055f;
+            b.AddRoundedBox(black, new Vector3(0f, w * 0.5f - wall * 0.5f, cz), new Vector3(w, wall, depth), Quaternion.identity, 0.002f, 1);
+            b.AddRoundedBox(black, new Vector3(0f, -w * 0.5f + wall * 0.5f, cz), new Vector3(w, wall, depth), Quaternion.identity, 0.002f, 1);
+            b.AddRoundedBox(black, new Vector3(w * 0.5f - wall * 0.5f, 0f, cz), new Vector3(wall, w, depth), Quaternion.identity, 0.002f, 1);
+            b.AddRoundedBox(black, new Vector3(-w * 0.5f + wall * 0.5f, 0f, cz), new Vector3(wall, w, depth), Quaternion.identity, 0.002f, 1);
+            b.AddRoundedBox(alu, new Vector3(0f, 0f, cz - depth * 0.5f - 0.004f), new Vector3(w + 0.004f, w + 0.004f, 0.008f), Quaternion.identity, 0.002f, 1);
+            foreach (float x in new[] { -0.036f, 0.036f })
+            {
+                foreach (float y in new[] { -0.036f, 0.036f })
+                {
+                    AddScrew(b, steel, black, new Vector3(x, y, 0.0005f), Vector3.forward, 0.0025f);
+                }
+            }
+
+            float plateLength = 0.085f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Quaternion tilt = Quaternion.AngleAxis(side * 28f, Vector3.up);
+                b.AddBox(glass, new Vector3(side * 0.02f, 0f, cz - 0.005f), new Vector3(0.004f, w - 2f * wall, plateLength), tilt);
+            }
+
+            for (int i = 0; i < 7; i++)
+            {
+                b.AddRoundedBox(alu, new Vector3(0f, -0.039f + i * 0.013f, cz - depth * 0.5f - 0.022f), new Vector3(w - 0.012f, 0.004f, 0.03f), Quaternion.identity, 0.001f, 1);
+            }
+
+            b.AddCylinderBetween(steel, new Vector3(0f, -0.2f, cz), new Vector3(0f, -w * 0.5f, cz), 0.00635f, Medium);
+            b.AddCylinder(alu, new Vector3(0f, -0.225f, cz), Vector3.up, 0.0125f, 0.05f, Medium, 0.002f);
+            AddPedestal(b, steel, black, alu, rubber, 0f, cz, -0.25f, 0.03f);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        // ----- Shared hardware --------------------------------------------------------------------
+
+        /// <summary>Floor pedestal: bolted base plate, steel column, clamp collar and top flange up to <paramref name="topY"/>.</summary>
+        private static void AddPedestal(MeshBuilder b, int steel, int black, int alu, int rubber, float x, float z, float topY, float columnRadius)
+        {
+            float floor = -BeamHeight;
+            b.AddRoundedBox(black, new Vector3(x, floor + 0.012f, z), new Vector3(0.26f, 0.024f, 0.26f), Quaternion.identity, 0.006f, 2);
+            for (int i = 0; i < 4; i++)
+            {
+                float bx = x + (i % 2 == 0 ? -0.1f : 0.1f);
+                float bz = z + (i < 2 ? -0.1f : 0.1f);
+                AddScrew(b, steel, black, new Vector3(bx, floor + 0.025f, bz), Vector3.up, 0.009f);
+            }
+
+            b.AddCylinderBetween(steel, new Vector3(x, floor + 0.024f, z), new Vector3(x, topY - 0.012f, z), columnRadius, Medium);
+            b.AddLathe(black, new List<Vector2>
+            {
+                new Vector2(columnRadius + 0.012f, 0f), new Vector2(columnRadius + 0.02f, 0.005f), new Vector2(columnRadius + 0.02f, 0.035f),
+                new Vector2(columnRadius + 0.012f, 0.04f), new Vector2(columnRadius, 0.04f), new Vector2(columnRadius, 0f)
+            }, new Vector3(x, floor + 0.024f, z), Quaternion.identity, Medium, 30f, 0f, 360f, true);
+            float collarY = floor + (topY - floor) * 0.62f;
+            b.AddCylinder(alu, new Vector3(x, collarY, z), Vector3.up, columnRadius + 0.008f, 0.05f, Medium, 0.003f);
+            b.AddCylinderBetween(steel, new Vector3(x + columnRadius + 0.008f, collarY, z), new Vector3(x + columnRadius + 0.045f, collarY, z), 0.004f, 8);
+            b.AddCylinder(rubber, new Vector3(x + columnRadius + 0.05f, collarY, z), Vector3.right, 0.008f, 0.014f, Small, 0.003f);
+            b.AddCylinder(alu, new Vector3(x, topY - 0.006f, z), Vector3.up, columnRadius + 0.03f, 0.012f, Medium, 0.002f);
+        }
+
+        /// <summary>Socket head cap screw: a chamfered head with a dark hex socket, along <paramref name="axis"/>.</summary>
+        private static void AddScrew(MeshBuilder b, int metal, int dark, Vector3 position, Vector3 axis, float radius)
+        {
+            Vector3 n = axis.normalized;
+            b.AddCylinder(metal, position, n, radius, radius * 0.9f, Small, radius * 0.2f);
+            b.AddCylinder(dark, position + n * (radius * 0.45f + 0.0002f), n, radius * 0.45f, 0.0004f, 6);
+        }
+
+        /// <summary>I-beam along local Y (length), flanges facing local ±Z.</summary>
+        private static void AddIBeam(MeshBuilder b, int submesh, Vector3 center, Quaternion rotation, float length, float flangeWidth, float depth, float flangeThickness, float webThickness)
+        {
+            b.AddRoundedBox(submesh, center, new Vector3(webThickness, length, depth - 2f * flangeThickness), rotation, 0.001f, 1);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                b.AddRoundedBox(submesh, center + rotation * new Vector3(0f, 0f, side * (depth * 0.5f - flangeThickness * 0.5f)),
+                    new Vector3(flangeWidth, length, flangeThickness), rotation, 0.002f, 1);
+            }
+        }
+
+        // ----- Control-room monitor and console ---------------------------------------------------
+
+        /// <summary>Monitor head: thin bezel, screen glass and back housing. Screen faces -Z (towards the viewer). Origin = screen centre.</summary>
+        public static ModelPart MonitorHead(string name, Vector2 screenSize) => MonitorHead(name, screenSize, true);
+
+        /// <summary>Monitor head; without the tilt bracket when it hangs on another screen (dual-screen bracket).</summary>
+        public static ModelPart MonitorHead(string name, Vector2 screenSize, bool withMount)
+        {
+            var mats = new[] { ModelMaterial.MonitorPlastic, ModelMaterial.ScreenGlass, ModelMaterial.Aluminium, ModelMaterial.Indicator };
+            const int plastic = 0, screen = 1, alu = 2, led = 3;
+            var b = new MeshBuilder(mats.Length);
+
+            b.AddRoundedBox(plastic, Vector3.zero, new Vector3(screenSize.x + 0.024f, screenSize.y + 0.024f, 0.022f), Quaternion.identity, 0.006f, 3);
+            b.AddBox(screen, new Vector3(0f, 0f, -0.0111f), new Vector3(screenSize.x, screenSize.y, 0.0005f), Quaternion.identity);
+            b.AddRoundedBox(plastic, new Vector3(0f, -0.01f, 0.022f), new Vector3(screenSize.x * 0.62f, screenSize.y * 0.62f, 0.028f), Quaternion.identity, 0.012f, 3);
+            b.AddRoundedBox(alu, new Vector3(0f, -0.01f, 0.039f), new Vector3(0.1f, 0.1f, 0.008f), Quaternion.identity, 0.002f, 1);
+            b.AddCylinder(led, new Vector3(screenSize.x * 0.5f - 0.004f, -screenSize.y * 0.5f - 0.006f, -0.0112f), Vector3.back, 0.0018f, 0.0008f, 8);
+
+            if (!withMount)
+            {
+                // Dual-screen bracket: a flat bar from this screen's back down to the screen below it.
+                float drop = screenSize.y + 0.016f;
+                b.AddRoundedBox(alu, new Vector3(0f, -drop * 0.5f, 0.047f), new Vector3(0.05f, drop + 0.06f, 0.008f), Quaternion.identity, 0.002f, 1);
+                return new ModelPart(b.ToMesh(name), mats);
+            }
+
+            // Tilt bracket: a tongue from the VESA plate to the hinge pin that sits in the stand's yoke.
+            Vector3 hinge = MountHingeLocal;
+            float tongueStart = 0.041f;
+            float tongueEnd = hinge.z + 0.009f;
+            b.AddRoundedBox(alu, new Vector3(0f, hinge.y, (tongueStart + tongueEnd) * 0.5f), new Vector3(0.04f, 0.034f, tongueEnd - tongueStart), Quaternion.identity, 0.003f, 2);
+            b.AddCylinder(alu, hinge, Vector3.right, 0.009f, 2f * (YokeCheekX + 0.012f), Medium, 0.001f);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>
+        /// Hinge axis of the tilt bracket on the back of <see cref="MonitorHead"/>, in head space (origin = screen centre,
+        /// screen facing -Z). The stand's yoke must hold this point; the head tilts around it.
+        /// </summary>
+        public static readonly Vector3 MountHingeLocal = new Vector3(0f, -0.01f, 0.075f);
+
+        private const float YokeCheekX = 0.045f;
+
+        /// <summary>Tilt yoke on top of a stand column: a cross block and two cheeks that hold the hinge pin, plus a lock knob.</summary>
+        private static void AddTiltYoke(MeshBuilder b, int metal, int knob, Vector3 hinge)
+        {
+            b.AddRoundedBox(metal, new Vector3(0f, hinge.y - 0.03f, hinge.z), new Vector3(2f * YokeCheekX + 0.014f, 0.02f, 0.05f), Quaternion.identity, 0.003f, 2);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                b.AddRoundedBox(metal, new Vector3(side * YokeCheekX, hinge.y - 0.008f, hinge.z), new Vector3(0.012f, 0.046f, 0.034f), Quaternion.identity, 0.003f, 2);
+                b.AddCylinder(metal, new Vector3(side * (YokeCheekX + 0.0075f), hinge.y, hinge.z), Vector3.right, 0.012f, 0.003f, Medium, 0.0008f);
+            }
+
+            b.AddCylinder(knob, new Vector3(YokeCheekX + 0.022f, hinge.y, hinge.z), Vector3.right, 0.016f, 0.016f, Medium, 0.004f);
+        }
+
+        /// <summary>
+        /// Floor stand for a monitor: round base, column and a tilt yoke whose pin sits at <paramref name="hinge"/>
+        /// (stand space). Pass the head's hinge point (head position + head rotation * <see cref="MountHingeLocal"/>).
+        /// </summary>
+        public static ModelPart MonitorStand(string name, Vector3 hinge)
+        {
+            var mats = new[] { ModelMaterial.MonitorPlastic, ModelMaterial.Aluminium, ModelMaterial.Rubber };
+            const int plastic = 0, alu = 1, rubber = 2;
+            var b = new MeshBuilder(mats.Length);
+            b.AddLathe(plastic, new List<Vector2>
+            {
+                new Vector2(0f, 0f), new Vector2(0.2f, 0f), new Vector2(0.205f, 0.008f), new Vector2(0.19f, 0.022f), new Vector2(0.04f, 0.03f), new Vector2(0f, 0.03f)
+            }, new Vector3(0f, 0f, hinge.z), Quaternion.identity, Smooth, 25f);
+            b.AddCylinder(rubber, new Vector3(0f, 0.002f, hinge.z), Vector3.up, 0.2f, 0.004f, Smooth);
+            b.AddCylinderBetween(alu, new Vector3(0f, 0.03f, hinge.z), new Vector3(0f, hinge.y - 0.04f, hinge.z), 0.022f, Medium);
+            b.AddCylinder(plastic, new Vector3(0f, hinge.y * 0.55f, hinge.z), Vector3.up, 0.03f, 0.04f, Medium, 0.006f);
+            AddTiltYoke(b, alu, rubber, hinge);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>Lectern-style console stand: base plate, column and a tilt yoke whose pin sits at <paramref name="hinge"/>.</summary>
+        public static ModelPart ConsoleStand(string name, Vector3 hinge)
+        {
+            var mats = new[] { ModelMaterial.MonitorPlastic, ModelMaterial.Aluminium, ModelMaterial.Rubber };
+            const int plastic = 0, alu = 1, rubber = 2;
+            var b = new MeshBuilder(mats.Length);
+            b.AddRoundedBox(plastic, new Vector3(0f, 0.015f, hinge.z), new Vector3(0.42f, 0.03f, 0.36f), Quaternion.identity, 0.01f, 3);
+            foreach (float x in new[] { -0.18f, 0.18f })
+            {
+                foreach (float z in new[] { -0.15f, 0.15f })
+                {
+                    b.AddCylinder(rubber, new Vector3(x, 0.003f, hinge.z + z), Vector3.up, 0.018f, 0.006f, Small, 0.002f);
+                }
+            }
+
+            float top = hinge.y - 0.04f;
+            b.AddRoundedBox(alu, new Vector3(0f, (0.03f + top) * 0.5f, hinge.z), new Vector3(0.09f, top - 0.03f, 0.07f), Quaternion.identity, 0.01f, 3);
+            AddTiltYoke(b, alu, rubber, hinge);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        // ----- Screen read-out graphics -----------------------------------------------------------
+
+        private static float PanelWidth(Vector2 screenSize) => screenSize.x * 0.25f;
+        private static float ScreenPanelX(Vector2 screenSize) => screenSize.x * 0.5f - PanelWidth(screenSize) * 0.5f - 0.01f;
+
+        /// <summary>Length (local units) of half a quadrant-bar track.</summary>
+        public static float QuadrantBarHalfLength(Vector2 screenSize) => PanelWidth(screenSize) * 0.37f;
+
+        /// <summary>Screen position of the target circle's centre (left side of the screen, leaving room for text below).</summary>
+        public static Vector3 ScreenTargetCenter(Vector2 screenSize, float displayRadius)
+        {
+            return new Vector3(-screenSize.x * 0.5f + displayRadius + 0.014f, screenSize.y * 0.04f, -0.0116f);
+        }
+
+        /// <summary>Left end of quadrant bar <paramref name="index"/> on the side panel.</summary>
+        public static Vector3 ScreenBarStart(Vector2 screenSize, float displayRadius, int index)
+        {
+            float y = ScreenTargetCenter(screenSize, displayRadius).y + displayRadius * 0.72f - index * displayRadius * 0.48f;
+            return new Vector3(ScreenPanelX(screenSize) - QuadrantBarHalfLength(screenSize), y, -0.0119f);
+        }
+
+        /// <summary>
+        /// Read-out graphics on the screen: detector edge, tolerance zone, crosshair, scale rings, header bar and
+        /// the tracks of the four quadrant bars. Faces -Z, just in front of the screen glass.
+        /// </summary>
+        public static ModelPart ScreenGraphics(string name, Vector2 screenSize, float displayRadius, float toleranceRadius)
+        {
+            var mats = new[] { ModelMaterial.ScreenLines, ModelMaterial.ScreenZone, ModelMaterial.ScreenHeader };
+            const int lines = 0, zone = 1, header = 2;
+            var b = new MeshBuilder(mats.Length);
+            Vector3 back = Vector3.back;
+            Vector3 center = ScreenTargetCenter(screenSize, displayRadius);
+            float z = center.z;
+            float line = screenSize.y * 0.004f;
+
+            b.AddAnnulus(zone, center + new Vector3(0f, 0f, 0.0001f), back, 0f, toleranceRadius, Smooth);
+            b.AddAnnulus(lines, center, back, toleranceRadius - line * 0.8f, toleranceRadius, Smooth);
+            b.AddAnnulus(lines, center, back, displayRadius - line * 1.4f, displayRadius, Smooth);
+            for (int i = 1; i <= 3; i++)
+            {
+                float r = displayRadius * i / 4f;
+                b.AddAnnulus(lines, center, back, r - line * 0.4f, r, Smooth);
+            }
+
+            b.AddBox(lines, center, new Vector3(2f * displayRadius + 0.015f, line, 0.0002f), Quaternion.identity);
+            b.AddBox(lines, center, new Vector3(line, 2f * displayRadius + 0.015f, 0.0002f), Quaternion.identity);
+            for (int i = -4; i <= 4; i++)
+            {
+                if (i == 0) continue;
+                float t = displayRadius * i / 4f;
+                b.AddBox(lines, center + new Vector3(t, 0f, 0f), new Vector3(line * 0.8f, displayRadius * 0.07f, 0.0002f), Quaternion.identity);
+                b.AddBox(lines, center + new Vector3(0f, t, 0f), new Vector3(displayRadius * 0.07f, line * 0.8f, 0.0002f), Quaternion.identity);
+            }
+
+            float headerHeight = screenSize.y * 0.08f;
+            b.AddBox(header, new Vector3(0f, screenSize.y * 0.5f - headerHeight * 0.5f - 0.004f, z), new Vector3(screenSize.x - 0.008f, headerHeight, 0.0002f), Quaternion.identity);
+            b.AddBox(header, new Vector3(ScreenPanelX(screenSize), center.y, z + 0.0001f), new Vector3(PanelWidth(screenSize), 2f * displayRadius, 0.0002f), Quaternion.identity);
+            float half = QuadrantBarHalfLength(screenSize);
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 start = ScreenBarStart(screenSize, displayRadius, i);
+                b.AddBox(zone, new Vector3(start.x + half, start.y, z + 0.00005f), new Vector3(2f * half + 0.004f, displayRadius * 0.14f, 0.0002f), Quaternion.identity);
+                b.AddBox(lines, new Vector3(start.x + half, start.y, z - 0.00005f), new Vector3(line * 0.6f, displayRadius * 0.18f, 0.0002f), Quaternion.identity);
+            }
+
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>A unit-length bar (x from 0 to 1) for the quadrant read-out; scaled along X at runtime.</summary>
+        public static ModelPart ScreenBar(string name, float height)
+        {
+            var b = new MeshBuilder(1);
+            b.AddBox(0, new Vector3(0.5f, 0f, 0f), new Vector3(1f, height, 0.0002f), Quaternion.identity);
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        /// <summary>Glowing ring around a selected mirror (in the XY plane, just in front of the coated face at z = 0).</summary>
+        public static ModelPart SelectionRing(string name, float radius)
+        {
+            var b = new MeshBuilder(1);
+            b.AddTorus(0, Vector3.zero, Vector3.forward, radius, 0.014f, 64, 10);
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        /// <summary>Five-pointed star in the XY plane (outer radius 1), facing -Z. Used on the results card.</summary>
+        public static ModelPart Star(string name)
+        {
+            var b = new MeshBuilder(1);
+            const float outer = 1f, inner = 0.42f, depth = 0.18f;
+            var pentagon = new List<Vector2>();
+            for (int i = 0; i < 5; i++)
+            {
+                float a = Mathf.PI * 0.5f + (i + 0.5f) * 2f * Mathf.PI / 5f;
+                pentagon.Add(new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * inner);
+            }
+
+            b.AddExtrudedPolygon(0, pentagon, depth, Vector3.zero, Quaternion.identity);
+            for (int i = 0; i < 5; i++)
+            {
+                float tip = Mathf.PI * 0.5f + i * 2f * Mathf.PI / 5f;
+                var spike = new List<Vector2> { pentagon[(i + 4) % 5], pentagon[i], new Vector2(Mathf.Cos(tip), Mathf.Sin(tip)) * outer };
+                // Counter-clockwise order for the front face.
+                spike = new List<Vector2> { spike[0], spike[2], spike[1] };
+                if (SignedArea(spike) < 0f) spike.Reverse();
+                b.AddExtrudedPolygon(0, spike, depth * 0.8f, Vector3.zero, Quaternion.identity);
+            }
+
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        private static float SignedArea(List<Vector2> polygon)
+        {
+            float area = 0f;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                Vector2 a = polygon[i], c = polygon[(i + 1) % polygon.Count];
+                area += a.x * c.y - c.x * a.y;
+            }
+
+            return area * 0.5f;
+        }
+
+        /// <summary>
+        /// Graphics of one beam-camera view, centred on the origin, facing -Z: field edge, iris hole ring,
+        /// green goal zone and a crosshair. <paramref name="radius"/> = field edge on the screen.
+        /// </summary>
+        public static ModelPart BeamCameraGraphics(string name, float radius, float holeFraction, float goalFraction)
+        {
+            var mats = new[] { ModelMaterial.ScreenLines, ModelMaterial.ScreenZone };
+            const int lines = 0, zone = 1;
+            var b = new MeshBuilder(mats.Length);
+            float line = radius * 0.03f;
+            b.AddAnnulus(zone, new Vector3(0f, 0f, 0.0001f), Vector3.back, 0f, radius * goalFraction, Smooth);
+            b.AddAnnulus(lines, Vector3.zero, Vector3.back, radius - line, radius, Smooth);
+            b.AddAnnulus(lines, Vector3.zero, Vector3.back, radius * holeFraction - line * 0.8f, radius * holeFraction, Smooth);
+            b.AddBox(lines, Vector3.zero, new Vector3(2f * radius, line * 0.6f, 0.0002f), Quaternion.identity);
+            b.AddBox(lines, Vector3.zero, new Vector3(line * 0.6f, 2f * radius, 0.0002f), Quaternion.identity);
+            return new ModelPart(b.ToMesh(name), mats);
+        }
+
+        /// <summary>Round marker dot for one beam on the screen.</summary>
+        public static ModelPart ScreenMarker(string name, float radius)
+        {
+            var b = new MeshBuilder(1);
+            b.AddAnnulus(0, Vector3.zero, Vector3.back, 0f, radius, Medium);
+            return new ModelPart(b.ToMesh(name), new[] { ModelMaterial.Indicator });
+        }
+
+        private static List<Vector2> Triangle(float side)
+        {
+            float height = side * 0.866f;
+            return new List<Vector2> { new Vector2(0f, height * 0.6667f), new Vector2(-side * 0.5f, -height * 0.3333f), new Vector2(side * 0.5f, -height * 0.3333f) };
+        }
+    }
+}
