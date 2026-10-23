@@ -3,7 +3,47 @@ guid: 0ae6b2c96ded3004f9362ab4e3c1c83e
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Ceiling
+    second: {fileID: 2100000, guid: cf3555cae3c1de942ad3204172330256, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Floor
+    second: {fileID: 2100000, guid: 5437e321a9e37fc468d13d38e13535ed, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hall_Floor
+    second: {fileID: 2100000, guid: bd4bef7ce35b6b84fa59d4d6094ab22c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hall_Wall
+    second: {fileID: 2100000, guid: f5d220d901654f54a83e449841230f10, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Light_Frame
+    second: {fileID: 2100000, guid: c178b9fb1e1f19740a756350da5dabd1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Light_Panel
+    second: {fileID: 2100000, guid: 8ceabfe2dc8182b499ca215e97e3fb88, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Material
+    second: {fileID: 2100000, guid: 575dbe7ba2927bc4ba1816a65535fb96, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Walls
+    second: {fileID: 2100000, guid: 227fa362961ca7e4294f1562159b5bcd, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

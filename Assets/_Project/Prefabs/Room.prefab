@@ -48,18 +48,34 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -743189013232237084, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 4be06b07b7a924f4fb4c788b01c80f94, type: 2}
     - target: {fileID: -322597144612010259, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
       propertyPath: m_CastShadows
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -322597144612010259, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 99cc35f9cb48b2e4d9e599099f0bb99b, type: 2}
     - target: {fileID: 919132149155446097, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
       propertyPath: m_Name
       value: Room
       objectReference: {fileID: 0}
+    - target: {fileID: 5122315925198442876, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 7b863cddcf49e1f4da5e518edb662d84, type: 2}
+    - target: {fileID: 5122315925198442876, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: f6873d22b7bc04249b1d25e5bcf377dd, type: 2}
     - target: {fileID: 8347027409163439617, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 95f527e9c676c24489cfcc21cdad2b59, type: 2}
+      objectReference: {fileID: 2100000, guid: 5437e321a9e37fc468d13d38e13535ed, type: 2}
     - target: {fileID: 8347027409163439617, guid: 0ae6b2c96ded3004f9362ab4e3c1c83e, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
