@@ -23,12 +23,16 @@ public class CurvedScreenPointer : MonoBehaviour
     GameObject hovered, pressed, dragTarget;
     Vector2 lastPos;
 
-    void OnEnable() => pressAction?.action.Enable();
+    // Geen ?. op Unity-objecten (InputActionReference is een ScriptableObject): nep-null wordt dan gemist
+    void OnEnable()
+    {
+        if (pressAction && pressAction.action != null) pressAction.action.Enable();
+    }
 
     void Update()
     {
         var es = EventSystem.current;
-        if (es == null || rayOrigin == null || pressAction == null) return;
+        if (es == null || rayOrigin == null || !pressAction || pressAction.action == null) return;
         data ??= new PointerEventData(es) { button = PointerEventData.InputButton.Left };
 
         // 1. Raycast naar het scherm → UV → UI-element
@@ -65,8 +69,8 @@ public class CurvedScreenPointer : MonoBehaviour
             data.eligibleForClick = true;
             data.dragging = false;
 
-            pressed = ExecuteEvents.ExecuteHierarchy(target, data, ExecuteEvents.pointerDownHandler)
-                      ?? ExecuteEvents.GetEventHandler<IPointerClickHandler>(target);
+            pressed = ExecuteEvents.ExecuteHierarchy(target, data, ExecuteEvents.pointerDownHandler);
+            if (!pressed) pressed = ExecuteEvents.GetEventHandler<IPointerClickHandler>(target);
             data.pointerPress = pressed;
             data.rawPointerPress = target;
 
@@ -109,7 +113,16 @@ public class CurvedScreenPointer : MonoBehaviour
 
     void OnDisable()
     {
-        if (hovered && data != null) ExecuteEvents.ExecuteHierarchy(hovered, data, ExecuteEvents.pointerExitHandler);
-        hovered = null;
+        if (data != null)
+        {
+            // Een ingedrukte knop of slider netjes loslaten, anders blijft hij "vast" hangen
+            if (pressed) ExecuteEvents.Execute(pressed, data, ExecuteEvents.pointerUpHandler);
+            if (data.dragging && dragTarget) ExecuteEvents.Execute(dragTarget, data, ExecuteEvents.endDragHandler);
+            if (hovered) ExecuteEvents.ExecuteHierarchy(hovered, data, ExecuteEvents.pointerExitHandler);
+            data.dragging = false;
+            data.pointerPress = null;
+            data.pointerDrag = null;
+        }
+        hovered = pressed = dragTarget = null;
     }
 }

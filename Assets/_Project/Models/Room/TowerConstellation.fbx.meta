@@ -8,7 +8,27 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: Beam_Glass
-    second: {fileID: 2100000, guid: 99cc35f9cb48b2e4d9e599099f0bb99b, type: 2}
+    second: {fileID: 2100000, guid: e8ba2fc6486a6f54c8c7d5369f5181bc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: BoltDecal
+    second: {fileID: 2100000, guid: 1f76f3d716de4474281566ed6642c703, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PolishedSteel
+    second: {fileID: 2100000, guid: cc0edd86e419ce6448b27313971af863, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: WeldTube
+    second: {fileID: 2100000, guid: f4bb312d701336b4bbb78d4e30ddc7ad, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Yellowy_Steel
+    second: {fileID: 2100000, guid: e8ba2fc6486a6f54c8c7d5369f5181bc, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -29,6 +29,12 @@ public class CurvedScreen : MonoBehaviour
         if (flipX) uv.x = 1f - uv.x;
         if (flipY) uv.y = 1f - uv.y;
 
+        if (!uiCamera || !raycaster || !uiCamera.targetTexture)
+        {
+            data.pointerCurrentRaycast = default;
+            return null;
+        }
+
         var rt = uiCamera.targetTexture;
         data.position = new Vector2(uv.x * rt.width, uv.y * rt.height);
 
