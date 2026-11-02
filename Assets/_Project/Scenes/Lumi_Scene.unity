@@ -171,11 +171,123 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lumi
       objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: ff067f75fee7740cb88ba95f99898f81, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623517}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623518}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623519}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623520}
   m_SourcePrefab: {fileID: 100100000, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+--- !u!1 &1467623514 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+  m_PrefabInstance: {fileID: 1249761116}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1467623517
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a081380fde5d421fade235505702a88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiLookAt
+  target: {fileID: 0}
+  head: {fileID: 0}
+  eye: {fileID: 0}
+  maxHeadYaw: 40
+  maxHeadUp: 25
+  maxHeadDown: 20
+  headSmoothTime: 0.25
+  turnBody: 1
+  startTurningAt: 35
+  stopTurningAt: 5
+  maxTurnSpeed: 90
+  turnSmoothTime: 0.5
+  weight: 1
+--- !u!114 &1467623518
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 560b34170122e4e4aa62847ab346c8d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiBeads
+  beadMaterial: {fileID: 2100000, guid: 1ce4c86f420d546f2a371fee904021a5, type: 2}
+  glowScale: 1.8
+  pulse: 0.12
+  pulseSpeed: 0.7
+  armArcUp: 0.05
+  armArcOut: 0.03
+  tailLag: 0.08
+  tailBob: 0.004
+--- !u!114 &1467623519
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfe2d059a2dfa44fdaad9a22b2825405, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiBlink
+  iris: {fileID: 0}
+  autoBlink: 1
+  blinkInterval: {x: 2.5, y: 6}
+  doubleBlinkChance: 0.2
+  closeTime: 0.06
+  holdTime: 0.04
+  openTime: 0.1
+  followMood: 1
+  idleAperture: 0
+  listenAperture: 0.3
+  thinkAperture: -0.4
+  talkAperture: 0
+  excitedAperture: 0.8
+  apertureSmoothTime: 0.2
+--- !u!114 &1467623520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fa5d42dce49744e596e5b5769cddb51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiLaserReactions
+  waveOnLevelStart: 1
+  lookAtSelectedMirror: 1
+  mirrorLookSeconds: 2.5
+  listenWhileHolding: 1
+  celebrateOnComplete: 1
+  puzzledOnWarning: 1
+  puzzledCooldown: 8
+  searchSeconds: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
