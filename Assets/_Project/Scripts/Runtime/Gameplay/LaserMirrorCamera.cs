@@ -30,6 +30,66 @@ namespace EinsteinTelescope.Laser
         [Tooltip("Render every Nth frame (2 = half the frame rate). Saves performance on standalone headsets.")]
         [SerializeField, Range(1, 6)] private int renderEveryNthFrame = 2;
 
+        public enum ViewMode
+        {
+            /// <summary>Camera circles the mirror at a fixed distance, so you see the tower, the mirror and both beams.</summary>
+            Orbit,
+            /// <summary>From the mirror surface along the reflected beam.</summary>
+            AlongBeam
+        }
+
+        [System.Serializable]
+        public struct ViewPreset
+        {
+            public string name;
+            public ViewMode mode;
+            [Tooltip("Orbit: distance from the mirror (m). Larger than the tank radius = filmed from outside.")]
+            public float distance;
+            [Tooltip("Orbit: angle above the horizon (degrees). 90 = straight from above, 0 = from the side.")]
+            [Range(0f, 90f)] public float elevation;
+            [Tooltip("Orbit: angle around the mirror (degrees). 0 = straight in front of the coated face, 90 = side, 180 = behind.")]
+            [Range(-180f, 180f)] public float sideAngle;
+            [Range(5f, 90f)] public float fieldOfView;
+
+            public ViewPreset(string name, ViewMode mode, float distance, float elevation, float sideAngle, float fieldOfView)
+            {
+                this.name = name;
+                this.mode = mode;
+                this.distance = distance;
+                this.elevation = elevation;
+                this.sideAngle = sideAngle;
+                this.fieldOfView = fieldOfView;
+            }
+        }
+
+        [Header("Views (the VIEW button on the screen cycles through these)")]
+        [SerializeField] private ViewPreset[] views = DefaultViews();
+
+        private static ViewPreset[] DefaultViews() => new[]
+        {
+            new ViewPreset("Overview", ViewMode.Orbit, 5f, 40f, 30f, 35f),
+            new ViewPreset("Top", ViewMode.Orbit, 5f, 80f, 0f, 35f),
+            new ViewPreset("Along beam", ViewMode.AlongBeam, 0f, 0f, 0f, 16f)
+        };
+
+        [ContextMenu("Reset views to defaults")]
+        private void ResetViews()
+        {
+            views = DefaultViews();
+            m_ViewIndex = 0;
+        }
+
+        private GameObject[] m_Crosshair = new GameObject[0];
+
+        [Tooltip("Optional: shows the name of the current view (e.g. on the VIEW button).")]
+        [SerializeField] private Text viewLabel = null;
+
+        private int m_ViewIndex;
+
+        [Header("Hidden in the feed (optional)")]
+        [Tooltip("Renderers hidden for this camera only, e.g. a tank wall that blocks the view. Empty = nothing hidden.")]
+        [SerializeField] private Renderer[] hideInFeed = new Renderer[0];
+
         private RenderTexture m_Texture;
         private MirrorMount m_ShownMirror;
         private bool m_ShownHasBeam;
@@ -58,6 +118,52 @@ namespace EinsteinTelescope.Laser
             if (feedImage != null)
             {
                 feedImage.texture = m_Texture;
+
+                // The crosshair only means something when looking along the beam (the beam leaves from the centre).
+                var found = new System.Collections.Generic.List<GameObject>();
+                foreach (Transform child in feedImage.transform.parent)
+                {
+                    if (child.name.StartsWith("Crosshair"))
+                    {
+                        found.Add(child.gameObject);
+                    }
+                }
+
+                m_Crosshair = found.ToArray();
+            }
+
+            UpdateViewLabel();
+        }
+
+        private void OnEnable()
+        {
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering += HandleBeginCamera;
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering += HandleEndCamera;
+        }
+
+        private void OnDisable()
+        {
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering -= HandleBeginCamera;
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering -= HandleEndCamera;
+        }
+
+        private void HandleBeginCamera(UnityEngine.Rendering.ScriptableRenderContext context, Camera camera) => SetShellHidden(camera, true);
+
+        private void HandleEndCamera(UnityEngine.Rendering.ScriptableRenderContext context, Camera camera) => SetShellHidden(camera, false);
+
+        private void SetShellHidden(Camera camera, bool hidden)
+        {
+            if (camera != feedCamera)
+            {
+                return;
+            }
+
+            for (int i = 0; i < hideInFeed.Length; i++)
+            {
+                if (hideInFeed[i] != null)
+                {
+                    hideInFeed[i].forceRenderingOff = hidden;
+                }
             }
         }
 
@@ -86,22 +192,82 @@ namespace EinsteinTelescope.Laser
             Transform surface = coating != null ? coating.Surface : optic != null ? optic.transform : mirror.transform;
             Vector3 normal = surface.forward;
 
-            if (TryFindIncomingBeam(optic, out Vector3 hitPoint, out Vector3 incoming) && Vector3.Dot(incoming, normal) < 0f)
+            Vector3 centre = optic != null ? optic.transform.position : surface.position;
+            bool hasBeam = TryFindIncomingBeam(optic, out Vector3 hitPoint, out Vector3 incoming) && Vector3.Dot(incoming, normal) < 0f;
+            FollowsBeam = hasBeam;
+
+            ViewPreset view = CurrentView;
+            bool showCrosshair = view.mode == ViewMode.AlongBeam;
+            for (int i = 0; i < m_Crosshair.Length; i++)
+            {
+                if (m_Crosshair[i] != null && m_Crosshair[i].activeSelf != showCrosshair)
+                {
+                    m_Crosshair[i].SetActive(showCrosshair);
+                }
+            }
+
+            feedCamera.fieldOfView = view.fieldOfView > 0f ? view.fieldOfView : fieldOfView;
+            if (view.mode == ViewMode.Orbit)
+            {
+                PlaceOrbit(centre, normal, view);
+            }
+            else if (hasBeam)
             {
                 Vector3 outgoing = LaserOptics.Reflect(incoming, normal);
                 Place(hitPoint + outgoing * 0.01f, outgoing);
-                FollowsBeam = true;
             }
             else
             {
-                Vector3 centre = optic != null ? optic.transform.position : surface.position;
                 Place(centre + normal * 0.2f, normal);   // just in front of the coated face
-                FollowsBeam = false;
             }
 
             int frame = Time.frameCount;
             SetCamera(renderEveryNthFrame <= 1 || frame % renderEveryNthFrame == 0);
             UpdateTexts(mirror, FollowsBeam);
+        }
+
+        /// <summary>Name of the current view, e.g. "Side".</summary>
+        public string CurrentViewName => CurrentView.name;
+
+        private ViewPreset CurrentView => views != null && views.Length > 0
+            ? views[Mathf.Clamp(m_ViewIndex, 0, views.Length - 1)]
+            : new ViewPreset("Overview", ViewMode.Orbit, 5f, 40f, 30f, 35f);
+
+        /// <summary>Next camera view. Hook this to the VIEW button's OnClick.</summary>
+        public void NextView() => StepView(1);
+
+        public void PreviousView() => StepView(-1);
+
+        private void StepView(int step)
+        {
+            if (views == null || views.Length == 0)
+            {
+                return;
+            }
+
+            m_ViewIndex = (m_ViewIndex + step + views.Length) % views.Length;
+            m_ShownMirror = null;   // forces the texts to refresh
+            UpdateViewLabel();
+        }
+
+        private void UpdateViewLabel()
+        {
+            if (viewLabel != null)
+            {
+                viewLabel.text = "VIEW: " + CurrentView.name.ToUpperInvariant();
+            }
+        }
+
+        /// <summary>Camera at the given distance, height and angle around the mirror, looking at its centre.</summary>
+        private void PlaceOrbit(Vector3 centre, Vector3 normal, ViewPreset view)
+        {
+            Vector3 flat = Vector3.ProjectOnPlane(normal, Vector3.up);
+            flat = flat.sqrMagnitude < 1e-4f ? Vector3.forward : flat.normalized;
+            flat = Quaternion.AngleAxis(view.sideAngle, Vector3.up) * flat;
+
+            float elevation = view.elevation * Mathf.Deg2Rad;
+            Vector3 offset = (flat * Mathf.Cos(elevation) + Vector3.up * Mathf.Sin(elevation)) * view.distance;
+            Place(centre + offset, -offset);
         }
 
         private void Place(Vector3 position, Vector3 direction)
@@ -168,12 +334,13 @@ namespace EinsteinTelescope.Laser
             m_ShownHasBeam = hasBeam;
             if (titleText != null)
             {
-                titleText.text = mirror != null ? "MIRROR CAMERA  |  " + mirror.DisplayName.ToUpperInvariant() : "MIRROR CAMERA";
+                titleText.text = mirror != null ? "MIRROR CAMERA  |  " + mirror.DisplayName.ToUpperInvariant() + "  |  " + CurrentView.name.ToUpperInvariant() : "MIRROR CAMERA";
             }
 
             if (hintText != null)
             {
                 hintText.text = mirror == null ? "No mirror selected."
+                    : CurrentView.mode == ViewMode.Orbit ? (hasBeam ? "Press VIEW to look at the mirror from another side." : "No beam on this mirror. Steer the mirrors before it first.")
                     : hasBeam ? "Looking along the reflected beam: put the next iris or mirror on the crosshair."
                     : "No beam on this mirror: looking straight out of it. Steer the mirrors before it first.";
             }

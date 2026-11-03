@@ -18,13 +18,13 @@ public static class TowerLayoutProbe
     const string DEMO_ROOT = "Laser Demo - Michelson Interferometer";
     const float WELD = 0.001f;   // vertices binnen 1 mm horen bij hetzelfde onderdeel
 
-    struct Part
+    internal struct Part
     {
         public List<Vector3> points;
         public Bounds bounds;
     }
 
-    struct Tower
+    internal struct Tower
     {
         public Vector2 center;   // x, z
         public float diameter, bottom, top;
@@ -67,7 +67,7 @@ public static class TowerLayoutProbe
     }
 
     /// <summary>Splitst een mesh in losse onderdelen (driehoeken die vertices delen, gelast op 1 mm).</summary>
-    static List<Part> SplitParts(Mesh mesh, Matrix4x4 toWorld)
+    internal static List<Part> SplitParts(Mesh mesh, Matrix4x4 toWorld)
     {
         var verts = mesh.vertices;
         var world = new Vector3[verts.Length];
@@ -111,7 +111,7 @@ public static class TowerLayoutProbe
     }
 
     /// <summary>Tankmantels: ronde onderdelen van 1.4-3.2 m doorsnede, gegroepeerd per middelpunt.</summary>
-    static List<Tower> FindTowers(List<Part> parts)
+    internal static List<Tower> FindTowers(List<Part> parts)
     {
         var towers = new List<Tower>();
         foreach (var p in parts)
@@ -139,7 +139,7 @@ public static class TowerLayoutProbe
     }
 
     /// <summary>Een rechte buis: lange as (hoofdas van de punten), ligt horizontaal, ronde doorsnede.</summary>
-    static bool TryTube(Part part, out Vector3 a, out Vector3 b, out float radius)
+    internal static bool TryTube(Part part, out Vector3 a, out Vector3 b, out float radius)
     {
         a = b = Vector3.zero;
         radius = 0f;

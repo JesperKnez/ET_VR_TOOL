@@ -43,22 +43,23 @@ _Project/
   Scripts/
     CurvedScreen.cs, CurvedScreenPointer.cs        ← curved monitor (Jesper)
     Runtime/   Core, Optics, Control, Gameplay, Feedback   ← laser (Carlo)
-    Props2/    InstructionBoard, SignalTower       ← control room-props (Jesper)
+    Props2/    SignalTower                         ← control room-props (Jesper)
     Rendering/ ThickGlassSceneColor, TowerTransparency   ← glas-fallback, doorzichtige torens (Jesper)
     Debug/     LaserGamepadControls   ← PS5/Xbox-controller voor het laserspel; maakt zichzelf aan bij Play (editor/dev builds)
     Editor/    LaserSetupMenu, LaserLevelTexts, Models/   (Carlo)
                ETpfTowerBuilder                            (David)
-               MonitorUISetup, CreatePanelLights, InstructionBoardSetup, XRCleanup, TowerMaterialSetup, HallLookSetup   (Jesper)
+               MonitorUISetup, CreatePanelLights, InstructionBoardSetup, XRCleanup, TowerMaterialSetup, HallLookSetup, ControlRoomWallSetup, FloorMarkingSetup, HallPropsLayout   (Jesper)
     Tower/     CircleSpline, RoundedSquareSpline
   Prefabs/     Laser/, Tower/, Room.prefab
-  Models/      Laser/ (gegenereerde .asset-meshes), Tower/, Room/ (Room, Desk, ETpf_Tower_*, props), Props2/ (ET_*-props)
+  Models/      Laser/ (gegenereerde .asset-meshes), Tower/, Room/ (Room, Desk, ETpf_Tower_*, props), Props2/ (ET_*-props),
+               ETP_*-kits voor de hal: Clutter/, Equipment/, Vacuum/, Pipe/, Strut/, ETP_CableKit/, Ceiling/, Crane/
   Materials/   Laser/, Tower/, Room/ (wanden, vloeren, glas), Props2/ (ET2_*-materialen), MonitorUI_Screen.mat
   Textures/    Room/ (cleanroom-textures), MonitorUI_RT.renderTexture
   Shaders/     LaserBeam.shader, ThickGlass.shader, SG_Glass.shadergraph
   Documentation/Laser/README.md   ← uitleg van Carlo's laserkit
 ```
 
-Namespaces: `EinsteinTelescope.Laser` (laser), `EinsteinTelescope.Props` (instructiebord). Jespers oudere scripts (`CurvedScreen*`, `MonitorUISetup`, `CreatePanelLights`, `SignalTower`) staan in de global namespace.
+Namespaces: `EinsteinTelescope.Laser` (laser), `EinsteinTelescope.Props.Editor` (instructiebord-menu). Jespers oudere scripts (`CurvedScreen*`, `MonitorUISetup`, `CreatePanelLights`, `SignalTower`) staan in de global namespace.
 
 ### Editor-menu's
 
@@ -68,7 +69,10 @@ Namespaces: `EinsteinTelescope.Laser` (laser), `EinsteinTelescope.Props` (instru
 | `Tools → Einstein Telescope → Instructiebord → Briefing op bord zetten` | `InstructionBoardSetup.cs` | Jesper |
 | `Tools → Einstein Telescope → XR → Restanten Composition Layers opruimen` | `XRCleanup.cs` | Jesper |
 | `Tools → Einstein Telescope → Torens → 1/2/3 …` | `TowerMaterialSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Torens → Vloermarkering rond torens en buizen` | `FloorMarkingSetup.cs` | Jesper |
 | `Tools → Einstein Telescope → Belichting → Post-processing afstemmen op foto's` | `HallLookSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Control room → Muur: geschilderd stucwerk` | `ControlRoomWallSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Hal → Props plaatsen / Props weghalen` | `HallPropsLayout.cs` | Jesper |
 | `Tools → ET → Setup Curved Monitor UI` | `MonitorUISetup.cs` | Jesper |
 | `Tools → ET → Create Panel Lights` | `CreatePanelLights.cs` | Jesper |
 | `Tools → ETpathfinder Tower Builder` | `ETpfTowerBuilder.cs` | David |
@@ -120,8 +124,8 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 - De dartboard-HUD bestaat uit 3D-meshes onder `Panel_HUD` en wordt door dezelfde UI-camera gerenderd.
 
 ### Instructiebord
-- Een plat, interactief bord aan de muur toont de briefing. Menu: `Tools → Einstein Telescope → Instructiebord → Briefing op bord zetten`.
-- `InstructionBoard.cs` wisselt het scherm tussen `ET2_BoardScreen` (standby, met onzichtbare knop die de briefing opent) en `ET2_BoardScreen_Active` (donker achter de geopende briefing). Carlo's `LaserBriefingPanel` en de level manager blijven de briefing zelf openen en sluiten.
+- De TV aan de muur (`InstructionBoard` / `InstructionBoard_Screen` in `ET_ControlRoom_Props`) toont Carlo's bestaande briefing (`Briefing Screen (floating)`, `LaserBriefingPanel`). Menu: `Tools → Einstein Telescope → Instructiebord → Briefing op bord zetten` zet de briefing precies op het scherm en geeft het scherm de donkere `ET2_BoardScreen_Active`. Opnieuw draaien na verplaatsen van de TV.
+- Verder geen eigen logica: de level manager, HELP en de X/START-knoppen openen en sluiten de briefing zoals altijd. (Het oude standby-systeem `InstructionBoard.cs` met onzichtbare knop is verwijderd; `ET2_BoardScreen`/`ET_BoardStandby.png` worden niet meer gebruikt.)
 
 ### Signaalzuil
 - `SignalTower.cs` op `SignalTower_Wall`/`SignalTower_Base` zet de lenzen (`ET2_Signal_Red/_Amber/_Green`) aan/uit via `_EmissionColor`. Aansturen met `SetState(SignalTower.State.…)`. Herkent de lenzen aan de materiaalnaam, dus die namen niet wijzigen.
@@ -138,6 +142,20 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 - `SG_Glass` heeft geen fallback, maar is oud (zie hierboven).
 - `ThickGlass` verwacht een massieve mesh (voor- en achterkant, bijv. Solidify in Blender), `_Thickness` gelijk aan de echte dikte. Normals moeten naar buiten wijzen (`Cull Back`).
 - Bekende beperking: het glas krijgt één set reflection probes. Met de huidige probe-instellingen weerspiegelt het glas van beide kanten de control room. Dat is bewust, de speler staat binnen.
+
+### Control room-muur
+- `Room.prefab` zet op de ControlRoom-renderer slot 1 op `ControlRoom_Wall.mat` (slot 0 is `Floor`). Het FBX-slot `Walls` (`Walls.mat`) wordt daardoor op die renderer niet gebruikt.
+- `ControlRoomWallSetup.cs` genereert `Textures/Room/T_Plaster_*` (geschilderd stucwerk: gebroken wit ±77%, latex-mat, zachte spaanvlekken en fijne rollerstructuur, geen naden; tegel 2 × 2 m) en zet ze op `ControlRoom_Wall`. De tiling volgt uit een UV-meting van de muren. Uiterlijk aanpassen in `Plaster()`. Een eerste versie met akoestische panelen had te harde naden en is vervangen. Daarna opnieuw baken.
+
+### Hal aankleden (`HallPropsLayout`, nov 2026)
+- Hal volgens `Room.fbx`: x ±17,15, z ±11, vloer 0, plafond 8 m. Control room in de hoek x −17,15..−9,15, z −11..−3, vloer op y ≈ 2,2. Muren in het script: noord = z+, zuid = z−, oost = x+, west = x−.
+- Met de hand in de scene gezet (3 nov 2026, niet door het script): `ETP_OverheadCrane` over de hele hal (schaal 1,71 × 2,12, rails langs noord- en zuidmuur op ±6,5–7,5 m), `ETP_MastLift` op (−12,3, 0, 2,9), en `ETP_OpticalTable`, `ETP_ControlCabinets_Floor` en `ETP_ToolTrolley` in de control room. Let op: de kraan is non-uniform geschaald, dus haken en takels zijn mee uitgerekt.
+- `Tools → Einstein Telescope → Hal → Props plaatsen` zet alles onder één object `Hall_Props` (per zone een kind): technische rij langs de noordmuur (rekken, ringbandenkast, schakelkasten, 19"-racks, kabelgoot op 3 m met kabels die de kasten in zakken, leidingen D110/D60 op 4,3/4,7 m), west- en oostmuur (racks, bedieningskastje, luchtbehandelingskast, rekken met onderdelen), AED/EHBO naast de control room, opslag van reserveonderdelen in de zuidoosthoek, een werkplek tussen de armen met rolsteiger bij T4, en HEPA-/wervelroosters tussen de lichtpanelen. Opnieuw draaien vervangt `Hall_Props`; bestaande objecten blijven onaangeroerd.
+- Botsingscontrole: een raster van 20 cm, opgebouwd uit de driehoeken van `TowerConstellation` en de bounding boxes van alles wat er al staat (behalve de laserdemo, lijnen en objecten > 12 m, zoals hal en kraan). Botst een prop, dan schuift hij tot 1 m op; lukt dat niet, dan wordt hij overgeslagen. Beide staan in de Console.
+- Oriëntatie: wandprops krijgen de kant waar het draaipunt tegenaan ligt tegen de muur. Ligt het draaipunt in het midden, dan geldt voorkant = +Z (Blender −Y). Staat iets achterstevoren, zet dan `flip: true` bij die regel. Rechte stukken (leidingen, kabels) worden opgerekt, goten in stukken van 1 m gelegd. Spullen op planken en tafels worden met tijdelijke MeshColliders op het oppervlak gezet.
+- Props krijgen ContributeGI + Batching Static en **Receive GI = Light Probes**: de kits hebben geen lightmap-UV's. Daarna opnieuw baken. Het script meldt het totaal aantal tris (Quest-budget).
+- Afstanden van de leidingbeugels (`PIPE_D110_FROM_WALL`, `PIPE_D60_FROM_WALL`) zijn geschat uit de beugelmaten. Controleer één keer in de Scene view of de leiding in de klem ligt.
+- Niet gebruikt: `Strut/`, de bochten/sag/offset-stukken uit de CableKit, de meeste `Pipe/`-onderdelen, `Ceiling/` LED en Plain (de lichtpanelen bestaan al), `ET_Cameras`, `ET_Zaklamp`, `ET_ServerRack` en `Room/CraneControlStation.fbx` (heeft knoppen als RESTART LEVEL, lijkt bedoeld voor gameplay).
 
 ### Belichting
 - Gebakken belichting met rechthoekige area lights per plafondpaneel (`CreatePanelLights.cs`), Adaptive Probe Volumes voor dynamische objecten, en reflection probes voor hal en control room.
@@ -179,6 +197,8 @@ Wordt opgepakt in Claude Code. Eerst materialen en instellingen inspecteren, dan
 - **`TowerConstellation` in Blender: ±404k tris en 227k vertices** (2 nov 2026). Dat is te zwaar voor de Quest; streef naar ≤100k voor de torens. Analyse en veilig opschonen met `Tools/Blender/tower_cleanup.py` (repo-root, buiten `Assets`): rapporteert tris per material slot en de zwaarste groepen identieke onderdelen (bouten, balgen), en doet daarna merge by distance, loose/degenerate opruimen, een lichte limited dissolve (0,5°, hoger maakt de ronde tanks lelijk) en recalc normals. Het origineel blijft bewaard als `<mesh>_backup`. Decimeren en vervangen doe je zelf op basis van het rapport.
 - Rapport van 2 nov 2026 (404k → 367k tris na cleanup): de 9 **balgen** zijn samen 123k tris (13.696 per stuk), de **lasringen** ±37k (1.024 per ring), 432 kleine beugels/lippen 41k (96 per stuk), en 840 boutjes van 2–5 cm samen ±17k. `Tools/Blender/tower_reduce.py` meet van elke balg het silhouet over de lengte (grootste straal per plak, inclusief eindkragen, vereenvoudigd tot op 3 mm) en van elke lasring de maten, en **bouwt ze opnieuw**. **Het opnieuw opbouwen van de balgen staat uit (`REBUILD_BELLOWS = False`):** de balgen hebben 23 ribbels, dus het profiel heeft ±88 punten nodig en het levert maar ±45% op. Daarnaast werden gladde buisstukken van 1.024 tris als balg gezien en zwaarder gemaakt. Wat wel werkt: lasringen (−23k) en UV's. Resultaat ±344k tris; verder reduceren alleen na meten op de Quest. Een onderdeel telt alleen als het echt rond is: de grootste straal moet binnen 8% van de halve doorsnede liggen. Zonder die controle werden op 2 nov 5 vierkante kastjes van 0,68 m als balg vervangen. Het script als schone low-poly draaivorm: balg 32 segmenten met scherpe V-ribbels, lasring als torus van 48×4. Het werkt op het origineel en op een gedecimeerde versie. Decimate (gekreukte ribbels) en het weghalen van meridianen (fragiel, deed niets) zijn geprobeerd en afgevallen. Daarna maakt het de UV's: bout-decals Reset, de rest Smart UV Project. Het verwijdert ook onderdelen < 3 cm, behalve de bout-decals (`BoltDecal`: vierkantjes van 2 tris met een bout-texture). Dry run: balgen 93k, lasringen 41k → verwachte uitkomst ±265k tris. Eerst draaien met `DRY_RUN = True`.
 - **Meting 2 nov 2026: 91–98% van het torenoppervlak heeft géén UV's** (alle UV's op één punt), en de bout-vlakken hebben er helemaal geen. Daardoor leest elke texture één pixel en lijkt alles egaal, zonder detail. Oplossing in Blender: `TowerConstellation` → Edit Mode → alles selecteren → U → Smart UV Project (Island Margin ±0.002), exporteren, daarna stap 3 opnieuw voor de tiling. De bout-vlakken eerst apart: selecteer via het material slot `BoltDecal` → U → Reset (elk vlak krijgt de hele decal), en sluit ze uit van de Smart UV Project-stap. `RP_Hall` staat niet binnenin een toren (2/6 richtingen).
+- **Flikkeren onderaan de torens (3 nov 2026):** `TowerConstellation` stond op y = 0, waardoor de onderkant van de voetplaten met de hal-vloer z-fightte. Opgelost door de toren op **y = 0,05** te zetten. Gevolg: de bundelbuizen liggen nu op ±1,38 m, terwijl `LaserTowerLayout` de optics op `BEAM_HEIGHT` 1,33 m zet. De optics moeten dus 5 cm mee omhoog, of de toren moet weer omlaag en de vloer iets lager.
+- De platen onder en in de tanks zijn n-gons van 64–128 hoeken (sommige concaaf). Dat gaf hier geen probleem, maar `tower_reduce.py` trianguleert ze nu (stap 5, `TRIANGULATE_NGONS`) om slivers te voorkomen.
 - `RP_Hall` staat op (0, 4, 0), precies in het midden van `TowerConstellation` (dat ook op de oorsprong staat). Zit het opnamepunt binnenin een tank, dan weerspiegelt al het metaal de donkere binnenkant en worden de torens zwart. Verplaats in dat geval de probe en compenseer met Box Offset.
 - **Doel-look (foto's van de echte hal):** tankmantels zijn champagnekleurig, satijnmat RVS met zachte, brede reflecties en een paar lichte vlekken. Leidingen, flenzen en poortdeksels zijn lichter en neutraal RVS. Lasnaden zijn iets donkerder en warmer. De hal is high-key en heel wit met heldere LED-panelen. Blauwe steunbokken staan onder de leidingen.
 - Slots: `Beam_Glass` (tankmantels en bundelbuizen, ondanks de naam) en `Yellowy_Steel` → `M_Tower_BlastedSteel` (champagne, smoothness ±0.5); `PolishedSteel` → `M_Tower_BrushedSteel` (neutraal, ±0.6). Klopt dat niet, wissel dan de twee regels in `Slots` om en draai stap 2 opnieuw.
@@ -187,6 +207,12 @@ Wordt opgepakt in Claude Code. Eerst materialen en instellingen inspecteren, dan
 - `M_Tower_Weld` en `M_Tower_Bolts` zijn kopieën van `WeldTube` en `BoltDecal` (ze houden hun lasrups- en bouttextures), maar met RVS-waarden. Stap 1 kopieert ze telkens opnieuw van die oude materialen, dus pas de oude niet meer aan.
 - Geborsteld RVS: de lijnen lopen langs U. Staan ze de verkeerde kant op, draai dan de UV's 90° in Blender. Met tiling in Unity kun je de richting niet draaien.
 - Na stap 2: belichting opnieuw baken.
+
+### Vloermarkering (zwart-geel)
+- `FloorMarkingSetup.cs` (`Torens → Vloermarkering rond torens en buizen`) meet torens en bundelbuizen uit de mesh van `TowerConstellation` (dezelfde herkenning als `Torenlayout meten`, daarom zijn die helpers in `TowerLayoutProbe` `internal`) en legt een ring om elke toren en twee stroken langs elke buis, van ring tot ring.
+- Geen URP Decal Projectors (DBuffer is te duur op de Quest en screen-space decals hebben geen smoothness), maar één platte mesh `Models/Room/FloorMarkings.asset` 2 mm boven de vloer, op het object `FloorMarkings` in de scene. Eén draw call, geen schaduw, wel lightmap-UV's (Contribute GI).
+- Materiaal `Materials/Room/M_FloorHazard` (URP Lit, metallic 0, smoothness ±0.75 uit de map, matter op slijtplekken) met procedurele textures `Textures/Room/T_FloorHazard_*`. Eén tegel is 12 × 12 cm; uiterlijk aanpassen in `Hazard()`, maten in de constanten bovenaan.
+- Vloerhoogte via een raycast naast de eerste toren; zonder vloer-collider de onderkant van `TowerConstellation` (staat in de Console). Opnieuw draaien is veilig (GUID's blijven). Daarna opnieuw baken.
 
 ### Torens doorzichtig maken (`TowerTransparency`)
 - `Scripts/Rendering/TowerTransparency.cs` op `TowerConstellation`. Wisselt tijdens een fade naar runtime-kopieën van de `_Clear`-materialen (Surface Type Transparent, Alpha blend, Render Face Both, Preserve Specular uit) en zet `_BaseColor.a` lager. Is de toren weer dicht, dan krijgt hij de opaque materialen terug.

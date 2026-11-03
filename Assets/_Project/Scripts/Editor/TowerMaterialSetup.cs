@@ -442,7 +442,7 @@ public static class TowerMaterialSetup
     }
 
     // Oppervlakgewogen percentiel
-    static float Percentile(List<(float value, float weight)> list, float p)
+    internal static float Percentile(List<(float value, float weight)> list, float p)
     {
         var sorted = list.OrderBy(x => x.value).ToList();
         float total = sorted.Sum(x => x.weight), acc = 0f;
@@ -456,7 +456,7 @@ public static class TowerMaterialSetup
 
     // ---------------------------------------------------------------- naadloze ruis
 
-    static float Hash(int x, int y, int seed)
+    internal static float Hash(int x, int y, int seed)
     {
         unchecked
         {
@@ -468,7 +468,7 @@ public static class TowerMaterialSetup
     }
 
     /// <summary>Value noise met px × py cellen over het eenheidsvierkant; loopt over de randen door (naadloos).</summary>
-    static float Noise(float u, float v, int px, int py, int seed)
+    internal static float Noise(float u, float v, int px, int py, int seed)
     {
         float x = u * px, y = v * py;
         int x0 = Mathf.FloorToInt(x), y0 = Mathf.FloorToInt(y);
@@ -483,7 +483,7 @@ public static class TowerMaterialSetup
         return Mathf.Lerp(top, bottom, fy);
     }
 
-    static float Fbm(float u, float v, int px, int py, int octaves, int seed)
+    internal static float Fbm(float u, float v, int px, int py, int octaves, int seed)
     {
         float sum = 0f, amp = 0.5f, norm = 0f;
         for (int o = 0; o < octaves; o++)
@@ -497,7 +497,7 @@ public static class TowerMaterialSetup
         return sum / norm;
     }
 
-    static void EnsureFolder(string path)
+    internal static void EnsureFolder(string path)
     {
         if (AssetDatabase.IsValidFolder(path)) return;
         string parent = Path.GetDirectoryName(path).Replace('\\', '/');

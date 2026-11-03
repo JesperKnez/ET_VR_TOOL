@@ -14,6 +14,9 @@ Steps:
   2. Weld rings   -> rebuilt as a torus, WELD_SEGMENTS x WELD_SIDES
   3. Tiny parts   -> deleted (except bolt decals)
   4. UVs          -> bolt decals: Reset (each quad gets the whole decal); rest: Smart UV Project
+  5. N-gons       -> triangulated with Beauty. Big n-gons (the 64-128 sided plates under the tanks) otherwise
+                     become fans of sliver triangles in Unity, or overlapping triangles when they are concave,
+                     which shimmer and z-fight in VR.
 The original mesh is kept as "<name>_before_reduce" (fake user).
 """
 
@@ -28,6 +31,7 @@ REBUILD_BELLOWS = False      # off: 23 ribs need ~88 profile points (only ~45% s
 REBUILD_WELDS = True
 DELETE_TINY = True
 MAKE_UVS = True
+TRIANGULATE_NGONS = True
 
 BELLOWS_MIN_TRIS = 1000      # also catches already decimated bellows
 BELLOWS_MIN_RIBS = 8
@@ -347,6 +351,17 @@ def make_uvs(obj):
     log(f"UVs: {decals:,} bolt-decal faces reset, {rest:,} faces Smart UV Project")
 
 
+def triangulate_ngons(obj):
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+    ngons = [f for f in bm.faces if len(f.verts) > 4]
+    log(f"N-gons (> 4 sides): {len(ngons):,} faces, largest {max((len(f.verts) for f in ngons), default=0)} sides -> triangulate (Beauty)")
+    if DRY_RUN or not ngons:
+        return
+    bmesh.ops.triangulate(bm, faces=ngons, quad_method='BEAUTY', ngon_method='BEAUTY')
+    bmesh.update_edit_mesh(me)
+
+
 def main():
     obj = bpy.context.active_object
     if obj is None or obj.type != 'MESH':
@@ -373,6 +388,8 @@ def main():
         delete_tiny(obj)
     if MAKE_UVS and not DRY_RUN:
         make_uvs(obj)
+    if TRIANGULATE_NGONS:
+        triangulate_ngons(obj)
 
     end = total_tris(bmesh.from_edit_mesh(obj.data))
     bpy.ops.mesh.select_all(action='DESELECT')

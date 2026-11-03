@@ -252,8 +252,6 @@ public static class LaserTowerLayout
             defaults != null && defaults.FindProperty(property) != null ? defaults.FindProperty(property).floatValue : fallback;
 
         var so = new SerializedObject(mount);
-        so.FindProperty("coarseStepDegrees").floatValue = Default("coarseStepDegrees", 0.5f) * k;
-        so.FindProperty("fineStepDegrees").floatValue = Default("fineStepDegrees", 0.05f) * k;
         so.FindProperty("holdSpeedDegreesPerSecond").floatValue = Default("holdSpeedDegreesPerSecond", 1.5f) * k;
         so.FindProperty("maxYawDegrees").floatValue = Mathf.Clamp(Default("maxYawDegrees", 8f) * k, 0.1f, 45f);
         so.FindProperty("maxPitchDegrees").floatValue = Mathf.Clamp(Default("maxPitchDegrees", 8f) * k, 0.1f, 45f);
@@ -261,9 +259,43 @@ public static class LaserTowerLayout
         so.FindProperty("initialPitchDegrees").floatValue = designPitch * k;
         so.FindProperty("seismicNoiseDegrees").floatValue = designNoise * k;
         so.FindProperty("sceneLeverArmMeters").floatValue = lever;
+        so.FindProperty("coarseStepDegrees").floatValue = Default("coarseStepDegrees", 0.5f) * k;
         so.ApplyModifiedProperties();
 
-        s_Log.AppendLine($"    {optic.name}: hefboom {lever:0.00} m, stappen x{k:0.00} (fijn {Default("fineStepDegrees", 0.05f) * k:0.000}°)");
+        RoundSteps(mount);
+        s_Log.AppendLine($"    {optic.name}: hefboom {lever:0.00} m, stappen x{k:0.00}");
+    }
+
+    const float FINE_STEP = 0.01f;     // fijn is altijd 0,01°: dan zijn 0, 1 en 2 (en de beginstand) altijd te bereiken
+    const float MIN_COARSE_STEP = 0.05f;
+
+    /// <summary>Fijn = 0,01°; grof, bereik en beginstand worden afgerond op een veelvoud daarvan.</summary>
+    static void RoundSteps(MirrorMount mount)
+    {
+        float Round(float value) => Mathf.Round(value / FINE_STEP) * FINE_STEP;
+
+        var so = new SerializedObject(mount);
+        so.FindProperty("fineStepDegrees").floatValue = FINE_STEP;
+        so.FindProperty("coarseStepDegrees").floatValue = Mathf.Max(MIN_COARSE_STEP, Round(so.FindProperty("coarseStepDegrees").floatValue));
+        so.FindProperty("maxYawDegrees").floatValue = Mathf.Max(FINE_STEP * 10f, Round(so.FindProperty("maxYawDegrees").floatValue));
+        so.FindProperty("maxPitchDegrees").floatValue = Mathf.Max(FINE_STEP * 10f, Round(so.FindProperty("maxPitchDegrees").floatValue));
+        foreach (string property in new[] { "initialYawDegrees", "initialPitchDegrees" })
+        {
+            var p = so.FindProperty(property);
+            float rounded = Round(p.floatValue);
+            if (rounded == 0f && p.floatValue != 0f) rounded = Mathf.Sign(p.floatValue) * FINE_STEP;
+            p.floatValue = rounded;
+        }
+        so.ApplyModifiedProperties();
+    }
+
+    [MenuItem("Tools/Einstein Telescope/Laser/Spiegelstappen afronden (fijn = 0,01°)", priority = 31)]
+    static void RoundAllMounts()
+    {
+        var mounts = Object.FindObjectsByType<MirrorMount>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var mount in mounts) RoundSteps(mount);
+        if (mounts.Length > 0) EditorSceneManager.MarkSceneDirty(mounts[0].gameObject.scene);
+        Debug.Log($"[LaserTowerLayout] Stappen afgerond op {mounts.Length} spiegels: fijn {FINE_STEP}°, grof een veelvoud daarvan, beginstand ook.");
     }
 
     /// <summary>Level 3 had vouwspiegels; in rechte armen worden het lange armen met irissen in de middentorens.</summary>

@@ -172,16 +172,19 @@ namespace EinsteinTelescope.Laser
         /// <summary>Tilt left/right by a number of steps (positive = right).</summary>
         public void NudgeYaw(int steps)
         {
-            SetCommandedAngles(m_CommandedYaw + steps * CurrentStepDegrees, m_CommandedPitch);
+            SetCommandedAngles(RoundAngle(m_CommandedYaw + steps * CurrentStepDegrees), m_CommandedPitch);
             AnyStepped?.Invoke(this);
         }
 
         /// <summary>Tilt up/down by a number of steps (positive = up).</summary>
         public void NudgePitch(int steps)
         {
-            SetCommandedAngles(m_CommandedYaw, m_CommandedPitch + steps * CurrentStepDegrees);
+            SetCommandedAngles(m_CommandedYaw, RoundAngle(m_CommandedPitch + steps * CurrentStepDegrees));
             AnyStepped?.Invoke(this);
         }
+
+        /// <summary>Removes float drift from repeated steps, so stepping back and forth lands on exactly 0.00 again.</summary>
+        private static float RoundAngle(float degrees) => Mathf.Round(degrees * 10000f) / 10000f;
 
         /// <summary>Set the commanded angles without creating an undo entry (used by undo itself).</summary>
         internal void RestoreCommandedAngles(Vector2 yawPitch)

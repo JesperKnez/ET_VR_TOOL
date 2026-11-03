@@ -1,25 +1,23 @@
 using EinsteinTelescope.Laser;
-using EinsteinTelescope.Props;
 using UnityEditor;
-using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace EinsteinTelescope.Props.Editor
 {
     /// <summary>
     /// Menu: Tools > Einstein Telescope > Instructiebord > Briefing op bord zetten.
     /// Puts the existing laser briefing (LaserBriefingPanel, "Briefing Screen (floating)") exactly on the
-    /// screen of the instruction board and wires the board's standby screen. Run it again after moving the
-    /// board: it re-fits everything. Undo (Ctrl+Z) reverts it.
+    /// screen of the wall TV (InstructionBoard_Screen) and gives that screen a dark background.
+    /// Nothing else changes: the level manager, HELP and the X/START buttons open and close the briefing as before.
+    /// Run it again after moving the TV: it re-fits everything. Undo (Ctrl+Z) reverts it.
     /// </summary>
     public static class InstructionBoardSetup
     {
         private const string ScreenName = "InstructionBoard_Screen";
-        private const string StandbyCanvasName = "Board Standby Canvas";
-        private const float Fill = 0.96f;          // share of the screen height the briefing uses
-        private const float SurfaceOffset = 0.004f; // canvas in front of the glass (m), avoids z-fighting
+        private const string DarkScreenMaterial = "ET2_BoardScreen_Active";
+        private const float Fill = 0.98f;          // share of the screen the briefing uses
+        private const float SurfaceOffset = 0.004f; // canvas in front of the screen (m), avoids z-fighting
 
         [MenuItem("Tools/Einstein Telescope/Instructiebord/Briefing op bord zetten")]
         public static void FitBriefingToBoard()
@@ -28,7 +26,7 @@ namespace EinsteinTelescope.Props.Editor
             if (screen == null)
             {
                 EditorUtility.DisplayDialog("Instructiebord",
-                    "Geen '" + ScreenName + "' gevonden in de scene.\nSleep ET_InstructieBord.fbx in de scene (of selecteer het bord) en probeer opnieuw.", "OK");
+                    "Geen '" + ScreenName + "' gevonden in de scene.\nZet ET_ControlRoom_Props in de scene (of selecteer de TV) en probeer opnieuw.", "OK");
                 return;
             }
 
@@ -46,7 +44,7 @@ namespace EinsteinTelescope.Props.Editor
                 return;
             }
 
-            Undo.SetCurrentGroupName("Briefing op instructiebord");
+            Undo.SetCurrentGroupName("Briefing in de TV");
             int group = Undo.GetCurrentGroup();
 
             // 1. Briefing root onto the screen. Canvas front faces -Z, so its forward points into the wall.
@@ -54,11 +52,13 @@ namespace EinsteinTelescope.Props.Editor
             Undo.RecordObject(root, "Move briefing");
             root.SetPositionAndRotation(center + normal * SurfaceOffset, Quaternion.LookRotation(-normal, up));
 
+            // 2. Widen the canvas to the TV's aspect ratio, then scale it so it fills the screen.
             var so = new SerializedObject(briefing);
             var screenObject = so.FindProperty("screen").objectReferenceValue as GameObject;
             if (screenObject != null && screenObject.transform is RectTransform canvasRect)
             {
                 Undo.RecordObject(canvasRect, "Fit briefing");
+                MatchAspect(canvasRect, size.x / size.y);
                 float scale = Mathf.Min(size.x * Fill / canvasRect.sizeDelta.x, size.y * Fill / canvasRect.sizeDelta.y);
                 float parentScale = Mathf.Max(1e-6f, root.lossyScale.x);
                 canvasRect.localPosition = Vector3.zero;
@@ -66,64 +66,47 @@ namespace EinsteinTelescope.Props.Editor
                 canvasRect.localScale = Vector3.one * (scale / parentScale);
             }
 
-            // 2. Board component + standby canvas (invisible full-screen button).
-            Transform boardRoot = screen.transform.parent != null ? screen.transform.parent : screen.transform;
-            var board = boardRoot.GetComponent<InstructionBoard>();
-            if (board == null)
+            // 3. Dark TV screen behind the briefing (also what you see while the briefing is closed).
+            Material dark = FindMaterial(DarkScreenMaterial);
+            if (dark != null)
             {
-                board = Undo.AddComponent<InstructionBoard>(boardRoot.gameObject);
+                Undo.RecordObject(screen, "TV screen material");
+                screen.sharedMaterial = dark;
             }
-
-            GameObject standby = BuildStandbyCanvas(boardRoot, center, normal, up, size, board);
-
-            var boardSo = new SerializedObject(board);
-            boardSo.FindProperty("briefing").objectReferenceValue = briefing;
-            boardSo.FindProperty("screenRenderer").objectReferenceValue = screen;
-            boardSo.FindProperty("standbyMaterial").objectReferenceValue = FindMaterial("ET2_BoardScreen");
-            boardSo.FindProperty("activeMaterial").objectReferenceValue = FindMaterial("ET2_BoardScreen_Active");
-            boardSo.FindProperty("standbyCanvas").objectReferenceValue = standby;
-            boardSo.ApplyModifiedProperties();
 
             Undo.CollapseUndoOperations(group);
             EditorSceneManager.MarkSceneDirty(screen.gameObject.scene);
-            Selection.activeGameObject = boardRoot.gameObject;
-            Debug.Log($"Instructiebord: briefing op het scherm gezet ({size.x:0.00} x {size.y:0.00} m).", boardRoot);
+            Selection.activeGameObject = briefing.gameObject;
+            Debug.Log($"Instructiebord: briefing in de TV gezet ({size.x:0.00} x {size.y:0.00} m).", briefing);
         }
 
-        private static GameObject BuildStandbyCanvas(Transform boardRoot, Vector3 center, Vector3 normal, Vector3 up, Vector2 size, InstructionBoard board)
+        /// <summary>
+        /// Makes the canvas as wide as the TV's aspect ratio asks (height stays). Carlo's briefing uses centre
+        /// anchors with fixed sizes, so every element's x position and width is stretched by the same factor:
+        /// edges stay on the edges, text keeps its font size and just gets more room. Running it twice is harmless.
+        /// </summary>
+        private static void MatchAspect(RectTransform canvas, float aspect)
         {
-            Transform old = boardRoot.Find(StandbyCanvasName);
-            if (old != null)
+            float oldWidth = canvas.sizeDelta.x;
+            float newWidth = canvas.sizeDelta.y * aspect;
+            if (oldWidth <= 0f || Mathf.Abs(newWidth - oldWidth) < 0.5f)
             {
-                Undo.DestroyObjectImmediate(old.gameObject);
+                return;
             }
 
-            var go = new GameObject(StandbyCanvasName, typeof(RectTransform));
-            Undo.RegisterCreatedObjectUndo(go, "Standby canvas");
-            go.transform.SetParent(boardRoot, false);
-            var rect = (RectTransform)go.transform;
-            rect.sizeDelta = new Vector2(1920f, 1080f);
-            rect.SetPositionAndRotation(center + normal * (SurfaceOffset * 0.5f), Quaternion.LookRotation(-normal, up));
-            float parentScale = Mathf.Max(1e-6f, boardRoot.lossyScale.x);
-            rect.localScale = new Vector3(size.x / 1920f, size.y / 1080f, 1f) / parentScale;
+            float k = newWidth / oldWidth;
+            canvas.sizeDelta = new Vector2(newWidth, canvas.sizeDelta.y);
+            foreach (RectTransform rect in canvas.GetComponentsInChildren<RectTransform>(true))
+            {
+                if (rect == canvas || rect.anchorMin.x != rect.anchorMax.x)   // stretched elements follow by themselves
+                {
+                    continue;
+                }
 
-            go.AddComponent<Canvas>().renderMode = RenderMode.WorldSpace;
-            go.AddComponent<CanvasScaler>().dynamicPixelsPerUnit = 2f;
-            AddUiRaycaster(go);
-
-            var hit = new GameObject("Open Briefing (invisible button)", typeof(RectTransform));
-            hit.transform.SetParent(rect, false);
-            var hitRect = (RectTransform)hit.transform;
-            hitRect.anchorMin = Vector2.zero;
-            hitRect.anchorMax = Vector2.one;
-            hitRect.offsetMin = hitRect.offsetMax = Vector2.zero;
-            var image = hit.AddComponent<Image>();
-            image.color = new Color(0f, 0f, 0f, 0f);    // invisible, still catches the controller ray
-            var button = hit.AddComponent<Button>();
-            button.transition = Selectable.Transition.None;
-            button.navigation = new Navigation { mode = Navigation.Mode.None };
-            UnityEventTools.AddPersistentListener(button.onClick, board.OpenBriefing);
-            return go;
+                Undo.RecordObject(rect, "Fit briefing");
+                rect.anchoredPosition = new Vector2(rect.anchoredPosition.x * k, rect.anchoredPosition.y);
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x * k, rect.sizeDelta.y);
+            }
         }
 
         /// <summary>Centre, outward normal, up and size (m) of the flat screen quad, from its vertices.</summary>
@@ -212,23 +195,6 @@ namespace EinsteinTelescope.Props.Editor
             }
 
             return null;
-        }
-
-        /// <summary>XR controller rays need the XRI Tracked Device Graphic Raycaster (added by name, like Carlo's kit).</summary>
-        private static void AddUiRaycaster(GameObject canvasObject)
-        {
-            const string trackedRaycaster = "UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster";
-            // TypeCache instead of AppDomain.GetAssemblies(): the latter can return unloaded assemblies (warning UAC0005)
-            foreach (System.Type type in TypeCache.GetTypesDerivedFrom<UnityEngine.EventSystems.BaseRaycaster>())
-            {
-                if (type.FullName == trackedRaycaster)
-                {
-                    canvasObject.AddComponent(type);
-                    return;
-                }
-            }
-
-            canvasObject.AddComponent<GraphicRaycaster>();
         }
     }
 }
