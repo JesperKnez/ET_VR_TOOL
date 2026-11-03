@@ -259,15 +259,22 @@ public static class LaserTowerLayout
         so.FindProperty("initialPitchDegrees").floatValue = designPitch * k;
         so.FindProperty("seismicNoiseDegrees").floatValue = designNoise * k;
         so.FindProperty("sceneLeverArmMeters").floatValue = lever;
-        so.FindProperty("coarseStepDegrees").floatValue = Default("coarseStepDegrees", 0.5f) * k;
+        // Grof: één stap verplaatst de vlek ongeveer een doelvenster (2 cm). Dan kom je met een paar grove stappen in de buurt
+        // en hoef je daarna maar enkele fijne stappen (0,01°) te doen, in plaats van tientallen.
+        so.FindProperty("coarseStepDegrees").floatValue = Mathf.Rad2Deg * Mathf.Atan(COARSE_SPOT_MOVE / (2f * lever));
         so.ApplyModifiedProperties();
 
         RoundSteps(mount);
-        s_Log.AppendLine($"    {optic.name}: hefboom {lever:0.00} m, stappen x{k:0.00}");
+
+        var final = new SerializedObject(mount);
+        float coarse = final.FindProperty("coarseStepDegrees").floatValue;
+        float SpotMm(float degrees) => 2f * lever * Mathf.Tan(degrees * Mathf.Deg2Rad) * 1000f;
+        s_Log.AppendLine($"    {optic.name}: hefboom {lever:0.00} m, grof {coarse:0.00}° = {SpotMm(coarse):0} mm, fijn {FINE_STEP:0.00}° = {SpotMm(FINE_STEP):0.0} mm per stap");
     }
 
     const float FINE_STEP = 0.01f;     // fijn is altijd 0,01°: dan zijn 0, 1 en 2 (en de beginstand) altijd te bereiken
-    const float MIN_COARSE_STEP = 0.05f;
+    const float MIN_COARSE_STEP = 0.03f;
+    const float COARSE_SPOT_MOVE = 0.02f;   // m: zoveel verplaatst de vlek bij één grove stap
 
     /// <summary>Fijn = 0,01°; grof, bereik en beginstand worden afgerond op een veelvoud daarvan.</summary>
     static void RoundSteps(MirrorMount mount)
@@ -293,9 +300,24 @@ public static class LaserTowerLayout
     static void RoundAllMounts()
     {
         var mounts = Object.FindObjectsByType<MirrorMount>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (var mount in mounts) RoundSteps(mount);
+        s_Log.Clear();
+        foreach (var mount in mounts)
+        {
+            // De hefboom (spiegel → vlek) staat al op de mount; daar volgt de grove stap uit
+            var so = new SerializedObject(mount);
+            float lever = so.FindProperty("sceneLeverArmMeters").floatValue;
+            so.FindProperty("coarseStepDegrees").floatValue = Mathf.Rad2Deg * Mathf.Atan(COARSE_SPOT_MOVE / (2f * lever));
+            so.ApplyModifiedProperties();
+            RoundSteps(mount);
+
+            float coarse = new SerializedObject(mount).FindProperty("coarseStepDegrees").floatValue;
+            float SpotMm(float degrees) => 2f * lever * Mathf.Tan(degrees * Mathf.Deg2Rad) * 1000f;
+            s_Log.AppendLine($"  {mount.DisplayName}: hefboom {lever:0.00} m, grof {coarse:0.00}° = {SpotMm(coarse):0} mm, fijn {FINE_STEP:0.00}° = {SpotMm(FINE_STEP):0.0} mm per stap");
+        }
+
         if (mounts.Length > 0) EditorSceneManager.MarkSceneDirty(mounts[0].gameObject.scene);
-        Debug.Log($"[LaserTowerLayout] Stappen afgerond op {mounts.Length} spiegels: fijn {FINE_STEP}°, grof een veelvoud daarvan, beginstand ook.");
+        Debug.Log($"[LaserTowerLayout] Stappen afgerond op {mounts.Length} spiegels: fijn {FINE_STEP}°, grof = ~{COARSE_SPOT_MOVE * 1000f:0} mm vlekverplaatsing.\n{s_Log}");
+        s_Log.Clear();
     }
 
     /// <summary>Level 3 had vouwspiegels; in rechte armen worden het lange armen met irissen in de middentorens.</summary>
