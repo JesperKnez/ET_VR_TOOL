@@ -112,3 +112,10 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Screenshots van ScreenshotToClipboard (F8/F9/F10)
+/Screenshots/
+
+# Unity herstel-autosaves van scenes
+/Assets/_Recovery/
+/Assets/_Recovery.meta

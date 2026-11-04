@@ -16,10 +16,10 @@ namespace EinsteinTelescope.Laser.Editor
     /// </summary>
     public static class LaserSetupMenu
     {
-        private const string RootFolder = "Assets/EinsteinTelescope/Laser";
-        private const string MaterialsFolder = RootFolder + "/Materials";
-        private const string PrefabsFolder = RootFolder + "/Prefabs";
-        private const string ModelsFolder = RootFolder + "/Models";
+        private const string RootFolder = "Assets/_Project";
+        private const string MaterialsFolder = RootFolder + "/Materials/Laser";
+        private const string PrefabsFolder = RootFolder + "/Prefabs/Laser";
+        private const string ModelsFolder = RootFolder + "/Models/Laser";
         private const string BeamShaderName = "EinsteinTelescope/LaserBeam";
         private const string DemoRootName = "Laser Demo - Michelson Interferometer";
 
