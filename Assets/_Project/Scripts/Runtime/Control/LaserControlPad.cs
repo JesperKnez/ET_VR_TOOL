@@ -105,7 +105,10 @@ namespace EinsteinTelescope.Laser
                 case LaserPadAction.ToggleShutter: Laser?.ToggleShutter(); break;
                 case LaserPadAction.ToggleInfraredViewer: LaserVisibility.SetInfraredViewer(!LaserVisibility.InfraredViewerActive); break;
                 case LaserPadAction.ToggleWavelength: ToggleWavelength(Laser); break;
-                case LaserPadAction.NextLevel: if (levelManager != null) levelManager.NextLevel(); break;
+                case LaserPadAction.NextLevel:
+                    // Only after the level is solved; the results panel on the monitor has its own NEXT LEVEL button.
+                    if (levelManager != null && levelManager.IsLevelCompleted) levelManager.NextLevel();
+                    break;
                 case LaserPadAction.ShowBriefing: if (levelManager != null) levelManager.ToggleBriefing(); break;
                 case LaserPadAction.Undo: panel?.Undo(); break;
                 case LaserPadAction.NextCameraView:

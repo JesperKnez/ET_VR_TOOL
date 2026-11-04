@@ -59,6 +59,9 @@ namespace EinsteinTelescope.Laser
         public string CurrentTitle => CurrentLevel != null ? CurrentLevel.Title : string.Empty;
         public bool IsLastLevel => m_Current == levels.Length - 1;
 
+        /// <summary>True once the current level is solved. Players can only move on after this (no skipping levels).</summary>
+        public bool IsLevelCompleted => objective != null && objective.IsCompleted;
+
         /// <summary>Seconds until the next level loads, or -1 when nothing is scheduled.</summary>
         public float SecondsUntilNextLevel => m_AdvanceAt < 0f ? -1f : Mathf.Max(0f, m_AdvanceAt - Time.time);
 

@@ -28,6 +28,7 @@ Material:
     - _AbsorptionScale: 0.4
     - _IOR: 1.5
     - _ReflectionStrength: 2
+    - _Refraction: 0
     - _Smoothness: 1
     - _SpecularStrength: 1
     - _Thickness: 0.03

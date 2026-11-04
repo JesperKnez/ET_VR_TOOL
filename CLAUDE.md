@@ -123,6 +123,11 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 - `Monitor Screen` heeft een niet-convexe `MeshCollider` nodig en de FBX moet **Read/Write** aan hebben, anders is `hit.textureCoord` in builds altijd (0,0).
 - De dartboard-HUD bestaat uit 3D-meshes onder `Panel_HUD` en wordt door dezelfde UI-camera gerenderd.
 
+### Level voltooid-scherm (Jesper, nov 2026)
+- Zodra een level is opgelost, vervangt `Panel_Complete` (op het `MonitorUI`-canvas) de drie panelen op de curved monitor: titel, sterren, tijd, veiligheidsincidenten, persoonlijk record en knoppen RETRY en NEXT LEVEL. Het is een `LaserResultsCard` (met `starImages` en `hideWhileOpen`); de level manager gebruikt die kaart, de zwevende `Results Card (floating)` staat uit.
+- De NEXT LEVEL-knop op het bedieningspaneel is weg; `LaserPadAction.NextLevel` werkt alleen nog als `LaserLevelManager.IsLevelCompleted`. De debug-sneltoetsen (N, Options op de gamepad) kunnen nog wel levels overslaan, bedoeld voor testen.
+- Opzetten: `Tools → Einstein Telescope → Laser → Level voltooid-scherm op de monitor` (veilig om opnieuw te draaien).
+
 ### Instructiebord
 - De TV aan de muur (`InstructionBoard` / `InstructionBoard_Screen` in `ET_ControlRoom_Props`) toont Carlo's bestaande briefing (`Briefing Screen (floating)`, `LaserBriefingPanel`). Menu: `Tools → Einstein Telescope → Instructiebord → Briefing op bord zetten` zet de briefing precies op het scherm en geeft het scherm de donkere `ET2_BoardScreen_Active`. Opnieuw draaien na verplaatsen van de TV.
 - Verder geen eigen logica: de level manager, HELP en de X/START-knoppen openen en sluiten de briefing zoals altijd. (Het oude standby-systeem `InstructionBoard.cs` met onzichtbare knop is verwijderd; `ET2_BoardScreen`/`ET_BoardStandby.png` worden niet meer gebruikt.)
