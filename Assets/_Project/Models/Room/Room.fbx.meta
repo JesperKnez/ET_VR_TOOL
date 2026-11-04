@@ -17,6 +17,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Glass
+    second: {fileID: 2100000, guid: 9d066e318fb0a0c4596369167b06f798, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GlassEdge
+    second: {fileID: 2100000, guid: 6aa1586590da62448b9be3159f101209, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Hall_Floor
     second: {fileID: 2100000, guid: bd4bef7ce35b6b84fa59d4d6094ab22c, type: 2}
   - first:
