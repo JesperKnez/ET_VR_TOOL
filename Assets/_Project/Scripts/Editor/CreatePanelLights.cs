@@ -1,18 +1,18 @@
 using UnityEditor;
 using UnityEngine;
 
-// Maakt de 117 plafondlampen uit XR Room.blend (collectie "PanelLights") na
-// als baked Rectangle (area) lights in Unity.
-// Blender -> Unity: (x, y, z) -> (-x, z, -y), zelfde conversie als de FBX-export.
+// Recreates the 117 ceiling lights from XR Room.blend (collection "PanelLights")
+// as baked Rectangle (area) lights in Unity.
+// Blender -> Unity: (x, y, z) -> (-x, z, -y), same conversion as the FBX export.
 public static class CreatePanelLights
 {
     const float Spacing = 2.4f;
-    const float StartX = -15.6f;   // Blender X van kolom 0
-    const float StartY = -9.6f;    // Blender Y van rij 0
-    const float Height = 7.95f;    // Blender Z (net onder het plafond van 8 m)
+    const float StartX = -15.6f;   // Blender X of column 0
+    const float StartY = -9.6f;    // Blender Y of row 0
+    const float Height = 7.95f;    // Blender Z (just below the 8 m ceiling)
     const int Columns = 14;
     const int Rows = 9;
-    const int ShortColumnsFrom = 11; // kolommen 11-13 hebben maar 6 rijen (boven de controlekamer)
+    const int ShortColumnsFrom = 11; // columns 11-13 only have 6 rows (above the control room)
     const int ShortRows = 6;
 
     [MenuItem("Tools/ET/Create Panel Lights")]
@@ -20,8 +20,8 @@ public static class CreatePanelLights
     {
         var existing = GameObject.Find("PanelLights");
         if (existing != null &&
-            !EditorUtility.DisplayDialog("PanelLights bestaat al",
-                "Er staat al een PanelLights-object in de scene. Vervangen?", "Vervangen", "Annuleren"))
+            !EditorUtility.DisplayDialog("PanelLights already exists",
+                "There is already a PanelLights object in the scene. Replace it?", "Replace", "Cancel"))
             return;
         if (existing != null) Undo.DestroyObjectImmediate(existing);
 
@@ -42,7 +42,7 @@ public static class CreatePanelLights
             }
         }
 
-        // 4 lampen in de controlekamer (Blender-coordinaten, plafond binnen op 5.8 m)
+        // 4 lights in the control room (Blender coordinates, inner ceiling at 5.8 m)
         var cr = new GameObject("ControlRoomLights");
         cr.transform.SetParent(root.transform, false);
         float[,] crPos = { { 11.35f, 5.2f }, { 14.95f, 5.2f }, { 11.35f, 8.8f }, { 14.95f, 8.8f } };
@@ -53,23 +53,23 @@ public static class CreatePanelLights
         }
 
         Selection.activeGameObject = root;
-        Debug.Log($"[CreatePanelLights] {count} baked area lights aangemaakt.");
+        Debug.Log($"[CreatePanelLights] Created {count} baked area lights.");
     }
 
-    const float HallIntensity = 70f;        // bijstellen na de eerste bake
-    const float ControlRoomIntensity = 40f; // kleine ruimte, minder nodig
-    const float Temperature = 5500f;        // neutraal-koel wit, zoals de LED-panelen in ETpathfinder
+    const float HallIntensity = 70f;        // adjust after the first bake
+    const float ControlRoomIntensity = 40f; // small room, needs less
+    const float Temperature = 5500f;        // neutral-cool white, like the LED panels in ETpathfinder
 
     static void AddLight(Transform parent, string name, float bx, float by, float bz, float intensity)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         go.transform.localPosition = new Vector3(-bx, bz, -by);          // Blender -> Unity
-        go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);      // naar beneden schijnen
+        go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);      // shine downwards
 
         var light = go.AddComponent<Light>();
         light.type = LightType.Rectangle;
-        light.areaSize = new Vector2(0.6f, 0.6f);                         // 600x600 LED-panelen
+        light.areaSize = new Vector2(0.6f, 0.6f);                         // 600x600 LED panels
         light.lightmapBakeType = LightmapBakeType.Baked;
         light.color = Color.white;
         light.useColorTemperature = true;

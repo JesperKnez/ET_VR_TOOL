@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace EinsteinTelescope.Laser
 {
-    /// <summary>Everything the results card shows about one finished level.</summary>
+    /// <summary>Everything the results screens show about one finished level.</summary>
     public struct LaserLevelResult
     {
         public int LevelIndex;
@@ -23,12 +23,30 @@ namespace EinsteinTelescope.Laser
         public bool IsNewBest;
         public bool IsLastLevel;
         public int Completions;
+
+        /// <summary>3-star time limit of this level (seconds); 2 stars: twice this.</summary>
+        public float ParTimeSeconds;
+        public int ThreeStarMistakeLimit;
+        public int TwoStarMistakeLimit;
+
+        /// <summary>The star rules in one sentence (LaserAlignmentObjective.DescribeStarRules).</summary>
+        public string StarRules;
+
+        /// <summary>Title of the level that NEXT LEVEL loads (empty after the last level).</summary>
+        public string NextTitle;
+
+        /// <summary>Best stars summed over all levels, and the maximum (3 per level).</summary>
+        public int TotalBestStars;
+        public int MaxTotalStars;
     }
 
     /// <summary>
     /// Floating card shown when a level is completed: time, stars, safety incidents and personal best
     /// (saved between sessions, see <see cref="LaserBestTimes"/>). Buttons: RETRY, CLOSE and NEXT LEVEL
     /// (PLAY AGAIN after the last level).
+    /// Since the levels moved into the hall towers this card floats in the middle of the hall, out of the player's
+    /// view. The level manager therefore only shows it when nothing else shows the results; in Room_Scene the
+    /// curved monitor does (<see cref="LaserMonitorResults"/>).
     /// </summary>
     public class LaserResultsCard : MonoBehaviour
     {
@@ -78,7 +96,7 @@ namespace EinsteinTelescope.Laser
             Set(titleText, result.IsLastLevel ? "ALL LEVELS COMPLETE" : "LEVEL " + (result.LevelIndex + 1) + " COMPLETE");
             Set(subtitleText, "Level " + (result.LevelIndex + 1) + "/" + result.LevelCount + "  |  " + result.Title);
             Set(timeText, LaserBestTimes.FormatTime(result.Seconds));
-            Set(incidentsText, result.Incidents + "   " + IncidentBreakdown(result));
+            Set(incidentsText, result.Incidents + "   " + DescribeIncidents(result));
             if (result.HadPreviousBest && result.IsNewBest)
             {
                 Set(bestText, LaserBestTimes.FormatTime(result.Seconds) + "   (was " + LaserBestTimes.FormatTime(result.PreviousBestSeconds) + ")");
@@ -134,7 +152,8 @@ namespace EinsteinTelescope.Laser
             onNext.Invoke();
         }
 
-        private static string IncidentBreakdown(LaserLevelResult result)
+        /// <summary>"(clean run)" or e.g. "(stray light 1, clipping 2)".</summary>
+        public static string DescribeIncidents(LaserLevelResult result)
         {
             if (result.Incidents == 0)
             {
@@ -149,14 +168,19 @@ namespace EinsteinTelescope.Laser
             return "(" + string.Join(", ", parts) + ")";
         }
 
-        private static string StarTip(LaserLevelResult result)
+        /// <summary>What to do better for 3 stars (only meaningful when the run earned fewer than 3).</summary>
+        public static string StarTip(LaserLevelResult result)
         {
-            if (result.Incidents > 1)
+            int limit = result.ThreeStarMistakeLimit > 0 || result.ParTimeSeconds > 0f ? result.ThreeStarMistakeLimit : 1;
+            if (result.Incidents > limit)
             {
-                return "3 stars: at most 1 safety incident. Move in smaller steps near optics and walls.";
+                return "3 stars: at most " + limit + (limit == 1 ? " safety incident" : " safety incidents") +
+                       ". Move in smaller steps near optics and walls.";
             }
 
-            return "3 stars: finish within 2 minutes. Use COARSE steps first, FINE only for the last centimetre.";
+            float par = result.ParTimeSeconds > 0f ? result.ParTimeSeconds : 120f;
+            return "3 stars: finish within " + LaserBestTimes.FormatTime(par) +
+                   ". Use COARSE steps first, FINE only for the last centimetre.";
         }
 
         private void Tint(Renderer renderer, Color color)

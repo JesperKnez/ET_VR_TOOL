@@ -74,7 +74,7 @@ namespace EinsteinTelescope.Lumi
             laser = GetComponent<LumiLaserReactions>();
             voice = GetComponent<LumiVoice>();
             offline = new OfflineTutorClient(ScriptedAnswer);
-            online = config != null && config.HasKey ? new DeepSeekClient(config) : null;
+            online = config != null && config.CanGoOnline ? new DeepSeekClient(config) : null;
             history = new LumiConversationHistory(config != null ? config.HistoryTurns : 6);
         }
 

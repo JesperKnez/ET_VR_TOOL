@@ -6,14 +6,15 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Tools > ET > Setup Curved Monitor UI
-/// Maakt in één keer: layers, RenderTexture (3840x1200), scherm-materiaal (URP/Unlit),
-/// UI-camera, canvas "MonitorUI" met 3 panelen, en koppelt CurvedScreen + MeshCollider
-/// aan het object "Monitor Screen". Veilig om opnieuw te draaien (hergebruikt wat al bestaat).
-/// Zet dit bestand in een map met de naam "Editor".
+/// Creates in one go: layers, RenderTexture (3840x1200), screen material (URP/Unlit),
+/// UI camera, canvas "MonitorUI" with 3 panels, and hooks up CurvedScreen + MeshCollider
+/// on the object "Monitor Screen". Safe to run again (reuses what already exists).
+/// Does not create the control pad buttons (those come from LaserSetupMenu).
+/// Keep this file in a folder named "Editor".
 /// </summary>
 public static class MonitorUISetup
 {
-    // ---- raster: 1600 px per meter, scherm 2,40 x 0,75 m ----
+    // ---- grid: 1600 px per metre, screen 2.40 x 0.75 m ----
     const int W = 3840, H = 1200;
     const int MARGIN = 40, GUTTER = 40, PANEL_H = H - 2 * MARGIN;   // 1120
     const int SIDE_W = 1320, MID_W = 1040;                            // 40+1320+40+1040+40+1320+40 = 3840
@@ -39,7 +40,7 @@ public static class MonitorUISetup
             rt = new RenderTexture(W, H, 24)
             {
                 name = "MonitorUI_RT",
-                useMipMap = true,          // scherper/rustiger op afstand in VR
+                useMipMap = true,          // sharper / calmer at a distance in VR
                 autoGenerateMips = true,
                 filterMode = FilterMode.Trilinear,
                 anisoLevel = 4,
@@ -48,13 +49,13 @@ public static class MonitorUISetup
             AssetDatabase.CreateAsset(rt, RT_PATH);
         }
 
-        // 3. Materiaal voor het scherm
+        // 3. Material for the screen
         EnsureFolder(Path.GetDirectoryName(MAT_PATH));
         var mat = AssetDatabase.LoadAssetAtPath<Material>(MAT_PATH);
         if (mat == null)
         {
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
-            if (shader == null) { Debug.LogError("URP/Unlit shader niet gevonden."); return; }
+            if (shader == null) { Debug.LogError("URP/Unlit shader not found."); return; }
             mat = new Material(shader);
             AssetDatabase.CreateAsset(mat, MAT_PATH);
         }
@@ -62,7 +63,7 @@ public static class MonitorUISetup
         mat.SetColor("_BaseColor", Color.white);
         EditorUtility.SetDirty(mat);
 
-        // 4. UI-camera (ver weg, rendert alleen layer ScreenUI naar de RT)
+        // 4. UI camera (far away, renders only the ScreenUI layer to the RT)
         var camGO = GameObject.Find("Monitor UI Camera");
         if (camGO == null)
         {
@@ -80,7 +81,7 @@ public static class MonitorUISetup
         uiCam.farClipPlane = 10f;
         uiCam.depth = -10;
 
-        // XR-camera mag de verborgen canvas niet zien
+        // The XR camera must not see the hidden canvas
         foreach (var c in Object.FindObjectsByType<Camera>())
             if (c != uiCam && c.targetTexture == null)
             {
@@ -88,7 +89,7 @@ public static class MonitorUISetup
                 c.cullingMask &= ~(1 << uiLayer);
             }
 
-        // 5. Canvas + 3 panelen
+        // 5. Canvas + 3 panels
         var canvasGO = GameObject.Find("MonitorUI");
         if (canvasGO == null)
         {
@@ -111,15 +112,15 @@ public static class MonitorUISetup
         Panel(canvasGO.transform, "Panel_MirrorCam", x, SIDE_W); x += SIDE_W + GUTTER;
         Panel(canvasGO.transform, "Panel_DPad", x, MID_W);       x += MID_W + GUTTER;
         Panel(canvasGO.transform, "Panel_HUD", x, SIDE_W);
-        // De dartboard (3D) hangt rechtstreeks onder Panel_HUD; geen HUD Feed-RawImage nodig.
+        // The dartboard (3D) hangs directly under Panel_HUD; no HUD feed RawImage needed.
 
         SetLayerRecursive(canvasGO, uiLayer);
 
-        // 6. Het gebogen scherm koppelen
+        // 6. Hook up the curved screen
         var screenGO = GameObject.Find(SCREEN_OBJECT);
         if (screenGO == null)
         {
-            Debug.LogWarning($"'{SCREEN_OBJECT}' niet gevonden in de scene. Stap 6 overgeslagen.");
+            Debug.LogWarning($"'{SCREEN_OBJECT}' not found in the scene. Step 6 skipped.");
         }
         else
         {
@@ -139,7 +140,7 @@ public static class MonitorUISetup
             cs.raycaster = raycaster;
             EditorUtility.SetDirty(cs);
 
-            // Read/Write aan op de FBX (nodig voor textureCoord in builds)
+            // Read/Write on in the FBX (needed for textureCoord in builds)
             if (mf && mf.sharedMesh)
             {
                 var path = AssetDatabase.GetAssetPath(mf.sharedMesh);
@@ -147,17 +148,17 @@ public static class MonitorUISetup
                 {
                     mi.isReadable = true;
                     mi.SaveAndReimport();
-                    Debug.Log($"Read/Write aangezet op {path}");
+                    Debug.Log($"Read/Write enabled on {path}");
                 }
             }
         }
 
         AssetDatabase.SaveAssets();
         Selection.activeGameObject = canvasGO;
-        Debug.Log("Curved monitor UI klaar. Verhuis nu de D-pad, mirror cam en HUD naar de panelen.");
+        Debug.Log("Curved monitor UI ready. Now move the D-pad, mirror cam and HUD onto the panels.");
     }
 
-    // Geen null-coalescing met Unity-objecten (nep-null), daarom expliciet:
+    // No null-coalescing with Unity objects (fake null), hence explicit:
     static T GetOrAdd<T>(GameObject go) where T : Component
     {
         var c = go.GetComponent<T>();
@@ -176,7 +177,7 @@ public static class MonitorUISetup
             go.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.05f, 1f);
         }
         var r = (RectTransform)t;
-        r.anchorMin = r.anchorMax = Vector2.zero;   // linksonder
+        r.anchorMin = r.anchorMax = Vector2.zero;   // bottom left
         r.pivot = Vector2.zero;
         r.anchoredPosition = new Vector2(x, MARGIN);
         r.sizeDelta = new Vector2(w, PANEL_H);
@@ -199,7 +200,7 @@ public static class MonitorUISetup
                 return i;
             }
         }
-        throw new System.Exception("Geen vrije layer meer over.");
+        throw new System.Exception("No free layer left.");
     }
 
     static void EnsureFolder(string path)

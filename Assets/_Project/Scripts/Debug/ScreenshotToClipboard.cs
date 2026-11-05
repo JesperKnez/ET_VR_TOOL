@@ -6,16 +6,16 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
 /// <summary>
-/// Screenshot naar het klembord, zonder UI en zonder controllers, om te delen.
-/// Maakt zichzelf aan bij Play (alleen in de editor en in development builds), dus niets in de scene nodig.
-///   F10   screenshot van de Game view, precies zoals je hem nu ziet (met overlays van de simulator)
-///   F8    schone foto (1920 x 1080) in de kijkrichting van de speler, zonder controllers en overlays
-///   F9    360° foto (equirectangular, 4096 x 2048) vanaf de plek van de speler, ook zonder controllers
-/// Het beeld staat daarna op het klembord (plakken in Slack, Discord, Word...) en als PNG in de map Screenshots
-/// naast Assets. Alleen de wereld wordt gerenderd: de overlay van de XR Device Simulator, de controllers, handen,
-/// rays en tooltips doen niet mee.
-/// Let op: een cubemap-render krijgt geen post-processing (bloom, tonemapping), dus de kleuren verschillen een
-/// beetje van wat je in Play Mode ziet.
+/// Screenshot to the clipboard, without UI and without controllers, for sharing.
+/// Creates itself on Play (editor and development builds only), so nothing is needed in the scene.
+///   F10   screenshot of the Game view, exactly as you see it now (with the simulator overlays)
+///   F8    clean picture (1920 x 1080) in the player's view direction, without controllers and overlays
+///   F9    360° picture (equirectangular, 4096 x 2048) from the player's position, also without controllers
+/// The image is then on the clipboard (paste into Slack, Discord, Word...) and saved as a PNG in the Screenshots
+/// folder next to Assets. Only the world is rendered: the XR Device Simulator overlay, the controllers, hands,
+/// rays and tooltips are left out.
+/// Note: a cubemap render gets no post-processing (bloom, tonemapping), so the colours differ slightly
+/// from what you see in Play Mode.
 /// </summary>
 public class ScreenshotToClipboard : MonoBehaviour
 {
@@ -44,7 +44,7 @@ public class ScreenshotToClipboard : MonoBehaviour
         if (keyboard.f10Key.wasPressedThisFrame) StartCoroutine(CaptureGameView());
     }
 
-    /// <summary>Precies wat je nu in de Game view ziet (inclusief overlays van de simulator), op de grootte van het Game-venster.</summary>
+    /// <summary>Exactly what you see in the Game view now (including the simulator overlays), at the size of the Game window.</summary>
     System.Collections.IEnumerator CaptureGameView()
     {
         yield return new WaitForEndOfFrame();
@@ -56,7 +56,7 @@ public class ScreenshotToClipboard : MonoBehaviour
     static void Capture(bool is360)
     {
         Camera main = Camera.main;
-        if (!main) { UnityEngine.Debug.LogWarning("[Screenshot] Geen Main Camera."); return; }
+        if (!main) { UnityEngine.Debug.LogWarning("[Screenshot] No Main Camera."); return; }
 
         var hidden = HideRig(main);
         var cameraObject = new GameObject("Screenshot Camera");
@@ -124,10 +124,10 @@ public class ScreenshotToClipboard : MonoBehaviour
         File.WriteAllBytes(path, texture.EncodeToPNG());
 
         bool copied = CopyToClipboard(path);
-        UnityEngine.Debug.Log($"[Screenshot] {(kind == "360" ? "360°-foto" : "Foto")} opgeslagen: {path}" + (copied ? " (staat op het klembord)" : " (klembord niet beschikbaar op dit platform)"));
+        UnityEngine.Debug.Log($"[Screenshot] {(kind == "360" ? "360° picture" : "Picture")} saved: {path}" + (copied ? " (copied to the clipboard)" : " (clipboard not available on this platform)"));
     }
 
-    /// <summary>Windows: het PNG-bestand als afbeelding op het klembord, via PowerShell (heeft een STA-thread nodig).</summary>
+    /// <summary>Windows: puts the PNG file on the clipboard as an image, via PowerShell (needs an STA thread).</summary>
     static bool CopyToClipboard(string path)
     {
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
@@ -145,13 +145,13 @@ public class ScreenshotToClipboard : MonoBehaviour
         }
         catch (System.Exception exception)
         {
-            UnityEngine.Debug.LogWarning("[Screenshot] Klembord mislukt: " + exception.Message);
+            UnityEngine.Debug.LogWarning("[Screenshot] Clipboard failed: " + exception.Message);
         }
 #endif
         return false;
     }
 
-    // ------------------------------------------------------------------ controllers, handen, rays en tooltips verbergen
+    // ------------------------------------------------------------------ hide controllers, hands, rays and tooltips
 
     struct Hidden
     {

@@ -18,6 +18,9 @@ namespace EinsteinTelescope.Laser
             return bestSeconds >= 0f;
         }
 
+        /// <summary>Most stars ever earned on this level (0 = never completed).</summary>
+        public static int BestStars(string levelKey) => PlayerPrefs.GetInt(Key(levelKey) + ".Stars", 0);
+
         /// <summary>Number of times this level was completed.</summary>
         public static int Completions(string levelKey) => PlayerPrefs.GetInt(Key(levelKey) + ".Count", 0);
 

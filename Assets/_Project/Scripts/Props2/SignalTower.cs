@@ -37,7 +37,7 @@ public class SignalTower : MonoBehaviour
                 }
     }
 
-    // r.materials maakt kopieën; die ruimt Unity niet zelf op
+    // r.materials creates copies; Unity does not clean those up by itself
     void OnDestroy()
     {
         if (instances == null) return;

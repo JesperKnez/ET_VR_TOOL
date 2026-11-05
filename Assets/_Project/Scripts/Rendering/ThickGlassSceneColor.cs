@@ -3,11 +3,11 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 /// <summary>
-/// Vertelt de shader XR/ThickGlass per camera of URP een Opaque Texture heeft.
-/// Zonder die texture (Performance URP Config, dus een losse Quest-build) zet hij
-/// _THICKGLASS_NO_SCENE_COLOR aan: het glas wordt dan gewoon doorzichtig geblend
-/// in plaats van de achtergrond uit de opaque texture te lezen (die is dan leeg → zwart raam).
-/// Geen component nodig: registreert zichzelf bij het laden, in Play Mode en in de editor.
+/// Tells the XR/ThickGlass shader per camera whether URP has an Opaque Texture.
+/// Without that texture (Performance URP Config, i.e. a standalone Quest build) it enables
+/// _THICKGLASS_NO_SCENE_COLOR: the glass is then simply blended transparently
+/// instead of reading the background from the opaque texture (which would be empty → black window).
+/// No component needed: registers itself on load, in Play Mode and in the editor.
 /// </summary>
 public static class ThickGlassSceneColor
 {
@@ -21,7 +21,7 @@ public static class ThickGlassSceneColor
     static void Register()
     {
         keyword = GlobalKeyword.Create(KEYWORD);
-        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;   // nooit dubbel registreren
+        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;   // never register twice
         RenderPipelineManager.beginCameraRendering += OnBeginCamera;
     }
 
@@ -29,7 +29,7 @@ public static class ThickGlassSceneColor
     {
         bool hasOpaqueTexture;
         if (camera.TryGetComponent(out UniversalAdditionalCameraData data))
-            hasOpaqueTexture = data.requiresColorTexture;   // camera-instelling, of die van de URP Asset
+            hasOpaqueTexture = data.requiresColorTexture;   // camera setting, or the one from the URP Asset
         else
             hasOpaqueTexture = GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp
                                && urp.supportsCameraOpaqueTexture;

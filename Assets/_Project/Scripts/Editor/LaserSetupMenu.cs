@@ -996,10 +996,9 @@ namespace EinsteinTelescope.Laser.Editor
             Text angles = UiText(canvasRect, "Angles", new Vector2(0f, -200f), new Vector2(560f, 40f), "yaw +0.00\u00b0    pitch +0.00\u00b0", 24, font);
             angles.color = new Color(0.6f, 0.75f, 0.85f, 1f);
 
-            UiButton(canvasRect, "Reset Mirror", new Vector2(-213f, -268f), new Vector2(132f, 72f), "RESET\nMIRROR", 19, LaserPadAction.ResetMirror, font, rounded);
-            Text shutter = UiButton(canvasRect, "Laser Shutter", new Vector2(-71f, -268f), new Vector2(132f, 72f), "SHUTTER", 19, LaserPadAction.ToggleShutter, font, rounded);
-            Text wavelength = UiButton(canvasRect, "Laser Wavelength", new Vector2(71f, -268f), new Vector2(132f, 72f), "LASER", 19, LaserPadAction.ToggleWavelength, font, rounded);
-            Text infrared = UiButton(canvasRect, "IR Viewer", new Vector2(213f, -268f), new Vector2(132f, 72f), "IR VIEWER", 19, LaserPadAction.ToggleInfraredViewer, font, rounded);
+            // The LASER (wavelength) and IR VIEWER buttons are retired: the laser is always the visible 532 nm one.
+            UiButton(canvasRect, "Reset Mirror", new Vector2(-71f, -268f), new Vector2(132f, 72f), "RESET\nMIRROR", 19, LaserPadAction.ResetMirror, font, rounded);
+            Text shutter = UiButton(canvasRect, "Laser Shutter", new Vector2(71f, -268f), new Vector2(132f, 72f), "SHUTTER", 19, LaserPadAction.ToggleShutter, font, rounded);
 
             Configure(pad, so =>
             {
@@ -1007,8 +1006,6 @@ namespace EinsteinTelescope.Laser.Editor
                 so.FindProperty("stepModeText").objectReferenceValue = stepMode;
                 so.FindProperty("anglesText").objectReferenceValue = angles;
                 so.FindProperty("shutterText").objectReferenceValue = shutter;
-                so.FindProperty("infraredText").objectReferenceValue = infrared;
-                so.FindProperty("wavelengthText").objectReferenceValue = wavelength;
                 so.FindProperty("levelText").objectReferenceValue = title;
             });
 
@@ -1386,7 +1383,7 @@ namespace EinsteinTelescope.Laser.Editor
         {
             for (int i = 0; i < 3; i++)
             {
-                foreach (string title in new[] { "Michelson", "Beam walking", "Folded arms" })
+                foreach (string title in new[] { "Michelson", "Beam walking", "Folded arms", "Long arms" })
                 {
                     LaserBestTimes.Clear("L" + (i + 1) + "_" + title);
                 }

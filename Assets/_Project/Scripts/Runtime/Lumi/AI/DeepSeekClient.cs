@@ -40,7 +40,7 @@ namespace EinsteinTelescope.Lumi
 
         public async Awaitable<string> CompleteAsync(IReadOnlyList<LumiChatMessage> messages, CancellationToken cancellation)
         {
-            if (config == null || !config.HasKey) throw new LumiLLMException("No API key in the AI config.");
+            if (config == null || !config.CanGoOnline) throw new LumiLLMException("No API key in the AI config.");
 
             var request = new Request
             {
@@ -60,7 +60,7 @@ namespace EinsteinTelescope.Lumi
                 timeout = config.TimeoutSeconds,
             };
             web.SetRequestHeader("Content-Type", "application/json");
-            web.SetRequestHeader("Authorization", "Bearer " + config.ApiKey.Trim());
+            if (config.HasKey) web.SetRequestHeader("Authorization", "Bearer " + config.ApiKey.Trim());
 
             UnityWebRequestAsyncOperation operation = web.SendWebRequest();
             while (!operation.isDone)

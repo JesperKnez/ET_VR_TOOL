@@ -6,28 +6,28 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 /// <summary>
-/// Tools > Einstein Telescope > Hal > Props plaatsen
-/// Vult de hal met de props uit Models/ (Clutter, Equipment, Vacuum, Pipe, ETP_CableKit, Ceiling, Props2) zodat hij
-/// eruitziet als een werkende ETpathfinder-hal. Alles komt onder één object 'Hall_Props', ingedeeld per zone:
+/// Tools > Einstein Telescope > Hall > Place props
+/// Fills the hall with the props from Models/ (Clutter, Equipment, Vacuum, Pipe, ETP_CableKit, Ceiling, Props2) so it
+/// looks like a working ETpathfinder hall. Everything goes under one object 'Hall_Props', organized per zone:
 ///
-///   Noordmuur (z+)   technische rij: rekken, ringbandenkast, schakelkasten, 19"-racks, kabelgoot met kabels, leidingen
-///   Westmuur (x-)    racks, bedieningskastje, brandblusser, omgevingsscherm, kabelgoot
-///   Oostmuur (x+)    luchtbehandelingskast, rekken met onderdelen, noodverlichting, brandblusser
-///   Zuidmuur (z-)    AED en EHBO naast de control room
-///   Opslag (zuidoost) reservebuizen op blauwe bokken, balg, domed door, palletwagen met kratten, pionnen
-///   Werkplek (midden) optische tafel met vacuümonderdelen, gereedschapswagen, trap, rolsteiger bij T4
-///   Plafond          HEPA-roosters en wervelroosters tussen de lichtpanelen
+///   North wall (z+)   technical row: shelving, binder cabinet, control cabinets, 19" racks, cable tray with cables, pipes
+///   West wall (x-)    racks, control box, fire extinguisher, environment display, cable tray
+///   East wall (x+)    air handling unit, shelving with parts, emergency lighting, fire extinguisher
+///   South wall (z-)   AED and first aid next to the control room
+///   Storage (southeast) spare tubes on blue stands, bellows, domed door, pallet trolley with crates, cones
+///   Workplace (middle) optical table with vacuum parts, tool trolley, step ladder, scaffold tower at T4
+///   Ceiling           HEPA grilles and swirl diffusers between the light panels
 ///
-/// Het script raakt bestaande objecten niet aan (kraan, hoogwerker, torens, control room). Het meet ze wel: elke prop
-/// op de vloer of tegen een muur wordt gecontroleerd op botsingen met de torens (de echte mesh), de bundelbuizen,
-/// de control room en alles wat er al staat. Botst een prop, dan wordt hij overgeslagen en gemeld in de Console.
+/// The script does not touch existing objects (crane, mast lift, towers, control room). It does measure them: every prop
+/// on the floor or against a wall is checked for collisions with the towers (the real mesh), the beam tubes,
+/// the control room and everything that is already there. If a prop collides, it is skipped and reported in the Console.
 ///
-/// Oriëntatie: wandprops krijgen hun achterkant tegen de muur. De achterkant is de kant waar het draaipunt tegenaan
-/// ligt (wandkastjes, beugels); ligt het draaipunt in het midden, dan geldt de Blender-conventie (voorkant = -Y in
-/// Blender = +Z in Unity). Staat iets achterstevoren, zet dan flip: true bij die regel.
+/// Orientation: wall props get their back against the wall. The back is the side the pivot lies against
+/// (wall boxes, brackets); if the pivot is in the middle, the Blender convention applies (front = -Y in
+/// Blender = +Z in Unity). If something faces the wrong way, set flip: true on that line.
 ///
-/// Opnieuw draaien is veilig: 'Hall_Props' wordt vervangen. Ongedaan maken met Ctrl+Z. Daarna belichting opnieuw baken.
-/// De props krijgen hun licht van de light probes (geen lightmap-UV's nodig), maar tellen wel mee in het baken.
+/// Safe to run again: 'Hall_Props' is replaced. Undo with Ctrl+Z. Bake the lighting again afterwards.
+/// The props get their light from the light probes (no lightmap UVs needed), but they do count in the bake.
 /// </summary>
 public static class HallPropsLayout
 {
@@ -36,19 +36,19 @@ public static class HallPropsLayout
     const string TOWER_OBJECT = "TowerConstellation";
     const string HALL_OBJECT = "Hall";
     const string CONTROL_ROOM_OBJECT = "ControlRoom";
-    const string DEMO_ROOT = "Laser Demo - Michelson Interferometer";   // optics staan in de torens, stralen zijn lange lijnen
+    const string DEMO_ROOT = "Laser Demo - Michelson Interferometer";   // optics are in the towers, beams are long lines
 
-    // Room.fbx, als 'Hall' niet in de scene staat
+    // Room.fbx, if 'Hall' is not in the scene
     static readonly Bounds FALLBACK_HALL = new Bounds(new Vector3(0f, 4f, 0f), new Vector3(34.3f, 8f, 22f));
 
-    const float CELL = 0.2f;              // rastergrootte van de botsingscontrole
-    const float WALL_GAP = 0.02f;         // tussen muur en achterkant van een prop
-    const float TRAY_HEIGHT = 3.0f;       // onderkant kabelgoot
-    const float TRAY_FROM_WALL = 0.17f;   // hart van de goot (zie ETP_CableKit/README.txt)
+    const float CELL = 0.2f;              // grid size of the collision check
+    const float WALL_GAP = 0.02f;         // between the wall and the back of a prop
+    const float TRAY_HEIGHT = 3.0f;       // bottom of the cable tray
+    const float TRAY_FROM_WALL = 0.17f;   // center of the tray (see ETP_CableKit/README.txt)
     const float TRAY_WIDTH = 0.30f;
-    const float PIPE_LOW = 4.3f;          // hart D110-leiding
-    const float PIPE_HIGH = 4.7f;         // hart D60-leiding
-    const float PIPE_D110_FROM_WALL = 0.27f;   // armlengte beugel min straal; controleer één keer in de Scene view
+    const float PIPE_LOW = 4.3f;          // center of the D110 pipe
+    const float PIPE_HIGH = 4.7f;         // center of the D60 pipe
+    const float PIPE_D110_FROM_WALL = 0.27f;   // bracket arm length minus radius; check once in the Scene view
     const float PIPE_D60_FROM_WALL = 0.28f;
 
     // Models
@@ -112,11 +112,11 @@ public static class HallPropsLayout
     static readonly List<string> moved = new List<string>();
     static int placed, triangles;
 
-    [MenuItem("Tools/Einstein Telescope/Hal/Props plaatsen")]
+    [MenuItem("Tools/Einstein Telescope/Hall/Place props")]
     static void Place()
     {
         var old = GameObject.Find(ROOT_NAME);
-        if (old && !EditorUtility.DisplayDialog("Hal-props", $"'{ROOT_NAME}' bestaat al. Vervangen?", "Vervangen", "Annuleren"))
+        if (old && !EditorUtility.DisplayDialog("Hall props", $"'{ROOT_NAME}' already exists. Replace it?", "Replace", "Cancel"))
             return;
         if (old) Undo.DestroyObjectImmediate(old);
 
@@ -127,18 +127,18 @@ public static class HallPropsLayout
         placed = triangles = 0;
 
         root = new GameObject(ROOT_NAME).transform;
-        Undo.RegisterCreatedObjectUndo(root.gameObject, "Hal-props plaatsen");
+        Undo.RegisterCreatedObjectUndo(root.gameObject, "Place hall props");
         BuildGrid();
 
         try
         {
-            EditorUtility.DisplayProgressBar("Hal-props", "Noordmuur", 0.1f); NorthWall();
-            EditorUtility.DisplayProgressBar("Hal-props", "Westmuur", 0.3f); WestWall();
-            EditorUtility.DisplayProgressBar("Hal-props", "Oostmuur", 0.45f); EastWall();
-            EditorUtility.DisplayProgressBar("Hal-props", "Zuidmuur", 0.55f); SouthWall();
-            EditorUtility.DisplayProgressBar("Hal-props", "Opslag", 0.65f); Storage();
-            EditorUtility.DisplayProgressBar("Hal-props", "Werkplek", 0.8f); Workplace();
-            EditorUtility.DisplayProgressBar("Hal-props", "Plafond", 0.9f); CeilingTiles();
+            EditorUtility.DisplayProgressBar("Hall props", "North wall", 0.1f); NorthWall();
+            EditorUtility.DisplayProgressBar("Hall props", "West wall", 0.3f); WestWall();
+            EditorUtility.DisplayProgressBar("Hall props", "East wall", 0.45f); EastWall();
+            EditorUtility.DisplayProgressBar("Hall props", "South wall", 0.55f); SouthWall();
+            EditorUtility.DisplayProgressBar("Hall props", "Storage", 0.65f); Storage();
+            EditorUtility.DisplayProgressBar("Hall props", "Workplace", 0.8f); Workplace();
+            EditorUtility.DisplayProgressBar("Hall props", "Ceiling", 0.9f); CeilingTiles();
         }
         finally
         {
@@ -148,27 +148,27 @@ public static class HallPropsLayout
         EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
         Selection.activeGameObject = root.gameObject;
 
-        var report = new StringBuilder($"[HallPropsLayout] {placed} props geplaatst onder '{ROOT_NAME}', samen {triangles / 1000f:0.0}k tris.\n");
-        report.AppendLine($"  Hal: x {hall.min.x:0.00}..{hall.max.x:0.00}, z {hall.min.z:0.00}..{hall.max.z:0.00}, vloer {hall.min.y:0.00}, plafond {hall.max.y:0.00}");
+        var report = new StringBuilder($"[HallPropsLayout] Placed {placed} props under '{ROOT_NAME}', {triangles / 1000f:0.0}k tris in total.\n");
+        report.AppendLine($"  Hall: x {hall.min.x:0.00}..{hall.max.x:0.00}, z {hall.min.z:0.00}..{hall.max.z:0.00}, floor {hall.min.y:0.00}, ceiling {hall.max.y:0.00}");
         if (moved.Count > 0)
         {
-            report.AppendLine($"  {moved.Count} iets opgeschoven om een botsing te vermijden:");
+            report.AppendLine($"  {moved.Count} moved slightly to avoid a collision:");
             foreach (var s in moved) report.AppendLine("    " + s);
         }
         if (skipped.Count > 0)
         {
-            report.AppendLine($"  {skipped.Count} overgeslagen:");
+            report.AppendLine($"  {skipped.Count} skipped:");
             foreach (var s in skipped) report.AppendLine("    " + s);
         }
-        report.AppendLine("  Bak daarna de belichting opnieuw (Window > Rendering > Lighting > Generate Lighting).");
+        report.AppendLine("  Bake the lighting again afterwards (Window > Rendering > Lighting > Generate Lighting).");
         Debug.Log(report.ToString(), root.gameObject);
     }
 
-    [MenuItem("Tools/Einstein Telescope/Hal/Props weghalen")]
+    [MenuItem("Tools/Einstein Telescope/Hall/Remove props")]
     static void Remove()
     {
         var old = GameObject.Find(ROOT_NAME);
-        if (!old) { Debug.Log($"[HallPropsLayout] Geen '{ROOT_NAME}' in de scene."); return; }
+        if (!old) { Debug.Log($"[HallPropsLayout] No '{ROOT_NAME}' in the scene."); return; }
         Undo.DestroyObjectImmediate(old);
         EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
     }
@@ -191,11 +191,11 @@ public static class HallPropsLayout
         StockShelf(shelfA, Wall.North, BOX_CLEAR, BOX_PINK, FLANGE_CF160);
         StockShelf(shelfB, Wall.North, BOX_PINK, PORT_CF160, BOX_CLEAR);
 
-        // Kabelgoot boven de rij, van de hoek met de westmuur tot voorbij de racks, met kabels die in de kasten zakken
+        // Cable tray above the row, from the corner with the west wall to past the racks, with cables dropping into the cabinets
         CableTray(Wall.North, hall.min.x, 4.6f);
         foreach (float x in new[] { -2.3f, -0.15f, 2.25f }) CableDrop(Wall.North, x);
 
-        // Twee leidingen van muur tot muur
+        // Two pipes from wall to wall
         PipeRun(Wall.North, hall.min.x + 0.1f, hall.max.x - 0.1f, PIPE_D110, PIPE_BRACKET_D110, PIPE_LOW, PIPE_D110_FROM_WALL);
         PipeRun(Wall.North, hall.min.x + 0.1f, hall.max.x - 0.1f, PIPE_D60, PIPE_BRACKET_D60, PIPE_HIGH, PIPE_D60_FROM_WALL);
     }
@@ -226,13 +226,13 @@ public static class HallPropsLayout
     static void SouthWall()
     {
         Group("South Wall");
-        float x = controlRoom.max.x + 1.2f;   // naast de control room
+        float x = controlRoom.max.x + 1.2f;   // next to the control room
         AgainstWall(AED, Wall.South, x);
         AgainstWall(FIRST_AID, Wall.South, x + 0.8f);
         AgainstWall(EXTINGUISHER_WALL, Wall.South, x + 1.6f);
     }
 
-    // Reserveonderdelen in de zuidoosthoek, buiten de Y-arm (T2 -> T4 -> T5)
+    // Spare parts in the southeast corner, outside the Y arm (T2 -> T4 -> T5)
     static void Storage()
     {
         Group("Storage - Spare Parts");
@@ -241,7 +241,7 @@ public static class HallPropsLayout
             var a = Floor(TUBE_STAND, 9.4f, z, 90f);
             var b = Floor(TUBE_STAND, 10.8f, z, 90f);
             if (!a || !b) continue;
-            float top = Mathf.Min(WorldBounds(a).max.y, WorldBounds(b).max.y) - 0.08f;   // iets in de zadels
+            float top = Mathf.Min(WorldBounds(a).max.y, WorldBounds(b).max.y) - 0.08f;   // slightly into the saddles
             var tube = Run(BEAM_TUBE, new Vector3(9.1f, 1.5f, z), new Vector3(11.1f, 1.5f, z));
             if (tube) SetBottom(tube, top);
         }
@@ -258,7 +258,7 @@ public static class HallPropsLayout
         foreach (float x in new[] { 8.2f, 11.0f, 13.8f }) Floor(CONE, x, -4.9f);
     }
 
-    // Werkplek in het open stuk tussen de armen, ten noorden van T2
+    // Workplace in the open area between the arms, north of T2
     static void Workplace()
     {
         Group("Workplace");
@@ -275,13 +275,13 @@ public static class HallPropsLayout
         Floor(STEP_LADDER, -1.9f, 2.7f, 20f);
         Floor(BOX_PINK, -1.3f, 0.9f, 10f);
 
-        // Rolsteiger bij middentoren T4, alsof daar onderhoud gebeurt
+        // Scaffold tower at middle tower T4, as if maintenance is going on there
         Floor(SCAFFOLD, 3.0f, 1.6f, 45f);
         Floor(CONE, 1.9f, 3.0f);
         Floor(CONE, 4.3f, 2.9f);
     }
 
-    // HEPA- en wervelroosters om en om, midden tussen de lichtpanelen (raster 2,4 m, zie CreatePanelLights)
+    // HEPA grilles and swirl diffusers alternating, centered between the light panels (2.4 m grid, see CreatePanelLights)
     static void CeilingTiles()
     {
         Group("Ceiling Tiles");
@@ -291,15 +291,15 @@ public static class HallPropsLayout
             {
                 if ((i + j) % 2 != 0) continue;
                 float x = -14.4f + i * 2.4f, z = -8.4f + j * 2.4f;
-                if (x < controlRoom.max.x + 0.6f && z < controlRoom.max.z + 0.6f) continue;   // boven de control room
+                if (x < controlRoom.max.x + 0.6f && z < controlRoom.max.z + 0.6f) continue;   // above the control room
                 Ceiling((i / 2) % 2 == 0 ? TILE_HEPA : TILE_SWIRL, x, z);
             }
         }
     }
 
-    // ---------------------------------------------------------------- samengestelde onderdelen
+    // ---------------------------------------------------------------- composite parts
 
-    // Bovenste plank en de twee daaronder: links, midden, rechts (gezien vanuit de hal)
+    // Top shelf and the two below it: left, middle, right (seen from the hall)
     static void StockShelf(GameObject shelf, Wall wall, string top, string middle, string low)
     {
         if (!shelf) return;
@@ -311,7 +311,7 @@ public static class HallPropsLayout
         OnSurface(low, shelf, c + along * 0.2f, level: 2);
     }
 
-    // Goot langs een muur in stukken van 1 m, met een beugel om de 1,5 m en twee kabelbundels erin
+    // Tray along a wall in pieces of 1 m, with a bracket every 1.5 m and two cable bundles in it
     static void CableTray(Wall wall, float from, float to)
     {
         Vector3 a = OnWall(wall, from, TRAY_HEIGHT, TRAY_FROM_WALL);
@@ -331,7 +331,7 @@ public static class HallPropsLayout
         Run(CABLE_12, a - side + lift, b - side + lift);
     }
 
-    // Bundel die over de rand van de goot omlaag gaat, de kast in (eindpunt 1 m lager, 0,15 m verder de hal in)
+    // Bundle that goes down over the edge of the tray into the cabinet (end point 1 m lower, 0.15 m further into the hall)
     static void CableDrop(Wall wall, float along)
     {
         var go = Spawn(CABLE_6_DROP);
@@ -349,9 +349,9 @@ public static class HallPropsLayout
             AgainstWall(bracket, wall, Mathf.Lerp(from, to, (i + 0.5f) / count), pivotY: height, check: false);
     }
 
-    // ---------------------------------------------------------------- plaatsen
+    // ---------------------------------------------------------------- placing
 
-    /// <summary>Op de vloer, gecentreerd op (x, z), gedraaid om de verticale as.</summary>
+    /// <summary>On the floor, centered on (x, z), rotated around the vertical axis.</summary>
     static GameObject Floor(string model, float x, float z, float yaw = 0f)
     {
         var go = Spawn(model);
@@ -362,7 +362,7 @@ public static class HallPropsLayout
         return Commit(go, true, FloorNudges());
     }
 
-    // Uitwijkplekken: ringen van 25 cm tot 1 m, in 8 richtingen
+    // Alternative spots: rings from 25 cm to 1 m, in 8 directions
     static IEnumerable<Vector3> FloorNudges()
     {
         for (float r = 0.25f; r <= 1.01f; r += 0.25f)
@@ -380,9 +380,9 @@ public static class HallPropsLayout
     }
 
     /// <summary>
-    /// Met de achterkant tegen een muur. 'along' is x bij noord/zuid en z bij oost/west.
-    /// Hoogte: bottom = onderkant op die hoogte; pivotY = draaipunt op die hoogte; geen van beide = op de vloer,
-    /// of op de ontwerphoogte als het model boven zijn draaipunt zweeft (AED, brandblusser met bordje).
+    /// With the back against a wall. 'along' is x for north/south and z for east/west.
+    /// Height: bottom = bottom at that height; pivotY = pivot at that height; neither = on the floor,
+    /// or at the design height if the model floats above its pivot (AED, fire extinguisher with sign).
     /// </summary>
     static GameObject AgainstWall(string model, Wall wall, float along, float? bottom = null, float? pivotY = null,
                                   bool flip = false, bool check = true)
@@ -394,7 +394,7 @@ public static class HallPropsLayout
         Vector3 n = Normal(wall);
         Yaw(go, Vector3.SignedAngle(back, n, Vector3.up));
 
-        var b = WorldBounds(go);   // draaipunt staat nog op de oorsprong
+        var b = WorldBounds(go);   // pivot is still at the origin
         Vector3 face = b.center + Vector3.Scale(b.extents, n);
         Vector3 shift = OnWall(wall, along, 0f, WALL_GAP) - face;
         if (pivotY.HasValue) shift.y = pivotY.Value;
@@ -405,9 +405,9 @@ public static class HallPropsLayout
     }
 
     /// <summary>
-    /// Een recht stuk (leiding, goot, kabel) van 'from' naar 'to'. De lange as van het model wordt in die richting
-    /// gelegd en opgerekt; met tiled: true worden losse stukken van ongeveer de modellengte achter elkaar gezet
-    /// (voor goten met gaten die er opgerekt raar uitzien). floorAligned: de onderkant ligt op de lijn in plaats van het hart.
+    /// A straight piece (pipe, tray, cable) from 'from' to 'to'. The long axis of the model is laid in that direction
+    /// and stretched; with tiled: true separate pieces of roughly the model length are placed one after another
+    /// (for trays with holes that look odd when stretched). floorAligned: the bottom lies on the line instead of the center.
     /// </summary>
     static GameObject Run(string model, Vector3 from, Vector3 to, bool tiled = false, Vector3? up = null,
                           bool floorAligned = false)
@@ -432,7 +432,7 @@ public static class HallPropsLayout
 
         var go = Spawn(model);
         if (!go) return null;
-        var b = WorldBounds(go);   // alleen de importrotatie (veelvouden van 90°), dus de box ligt langs de assen
+        var b = WorldBounds(go);   // only the import rotation (multiples of 90°), so the box is axis-aligned
         Vector3 size = b.size;
         Vector3 axis = size.x >= size.y && size.x >= size.z ? Vector3.right : size.y >= size.z ? Vector3.up : Vector3.forward;
         Vector3 modelUp = axis == Vector3.up ? Vector3.forward : Vector3.up;
@@ -442,13 +442,13 @@ public static class HallPropsLayout
         Vector3 worldUp = up ?? (Mathf.Abs(dir.y) > 0.99f ? Vector3.forward : Vector3.up);
         Quaternion turn = Quaternion.LookRotation(dir, worldUp) * Quaternion.Inverse(Quaternion.LookRotation(axis, modelUp));
 
-        // Oprekken langs de lange as, in de lokale assen van het model
+        // Stretch along the long axis, in the model's local axes
         float k = (to - from).magnitude / extent;
         Vector3 localAxis = Quaternion.Inverse(go.transform.rotation) * axis;
         localAxis = new Vector3(Mathf.Round(Mathf.Abs(localAxis.x)), Mathf.Round(Mathf.Abs(localAxis.y)), Mathf.Round(Mathf.Abs(localAxis.z)));
         go.transform.localScale = Vector3.Scale(go.transform.localScale, Vector3.one + localAxis * (k - 1f));
 
-        // Beginpunt: midden van het begin-vlak (of de onderrand ervan), na het oprekken
+        // Start point: middle of the start face (or its bottom edge), after stretching
         Vector3 start = b.center - axis * (extent * 0.5f);
         if (floorAligned) start -= modelUp * (Vector3.Dot(b.size, modelUp) * 0.5f);
         start += axis * (Vector3.Dot(start, axis) * (k - 1f));
@@ -458,14 +458,14 @@ public static class HallPropsLayout
         return Commit(go, check: false);
     }
 
-    /// <summary>Op een oppervlak van een eerder geplaatste prop (0 = bovenste, 1 = de plank daaronder, ...).</summary>
+    /// <summary>On a surface of a previously placed prop (0 = top, 1 = the shelf below it, ...).</summary>
     static GameObject OnSurface(string model, GameObject support, Vector3 at, int level = 0, float yaw = 0f)
     {
         if (!support) return null;
         var heights = SurfaceHeights(support, at);
         if (level >= heights.Count)
         {
-            skipped.Add($"{System.IO.Path.GetFileNameWithoutExtension(model)}: geen oppervlak {level} op {support.name}");
+            skipped.Add($"{System.IO.Path.GetFileNameWithoutExtension(model)}: no surface {level} on {support.name}");
             return null;
         }
         var go = Spawn(model);
@@ -476,7 +476,7 @@ public static class HallPropsLayout
         return Commit(go, check: false);
     }
 
-    /// <summary>Onder tegen het plafond.</summary>
+    /// <summary>Against the underside of the ceiling.</summary>
     static GameObject Ceiling(string model, float x, float z)
     {
         var go = Spawn(model);
@@ -486,7 +486,7 @@ public static class HallPropsLayout
         return Commit(go, check: false);
     }
 
-    // ---------------------------------------------------------------- hulpfuncties
+    // ---------------------------------------------------------------- helpers
 
     static void Group(string name)
     {
@@ -499,17 +499,17 @@ public static class HallPropsLayout
         var asset = AssetDatabase.LoadAssetAtPath<GameObject>(MODELS + model);
         if (!asset)
         {
-            skipped.Add($"{model}: model niet gevonden");
+            skipped.Add($"{model}: model not found");
             return null;
         }
         var go = (GameObject)PrefabUtility.InstantiatePrefab(asset, group);
-        go.transform.position = Vector3.zero;   // de importrotatie blijft staan
+        go.transform.position = Vector3.zero;   // the import rotation is kept
         return go;
     }
 
     /// <summary>
-    /// Controleert op botsingen (eerst op de bedoelde plek, dan op de uitwijkplekken), registreert de prop in het raster,
-    /// maakt hem static en telt zijn driehoeken. Past hij nergens, dan wordt hij weggehaald en gemeld.
+    /// Checks for collisions (first at the intended spot, then at the alternative spots), registers the prop in the grid,
+    /// makes it static and counts its triangles. If it fits nowhere, it is removed and reported.
     /// </summary>
     static GameObject Commit(GameObject go, bool check = true, IEnumerable<Vector3> nudges = null)
     {
@@ -524,14 +524,14 @@ public static class HallPropsLayout
                     var tryBounds = new Bounds(b.center + offset, b.size);
                     if (Blocked(tryBounds, out _)) continue;
                     go.transform.position += offset;
-                    moved.Add($"{go.name}: {offset.magnitude:0.00} m verschoven (botste met '{by}')");
+                    moved.Add($"{go.name}: moved {offset.magnitude:0.00} m (collided with '{by}')");
                     free = true;
                     break;
                 }
             }
             if (!free)
             {
-                skipped.Add($"{go.name} op ({b.center.x:0.0}, {b.center.z:0.0}): botst met '{by}'");
+                skipped.Add($"{go.name} at ({b.center.x:0.0}, {b.center.z:0.0}): collides with '{by}'");
                 Object.DestroyImmediate(go);
                 return null;
             }
@@ -540,7 +540,7 @@ public static class HallPropsLayout
 
         const StaticEditorFlags flags = StaticEditorFlags.ContributeGI | StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic;
         foreach (var t in go.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(t.gameObject, flags);
-        foreach (var r in go.GetComponentsInChildren<MeshRenderer>(true)) r.receiveGI = ReceiveGI.LightProbes;   // geen lightmap-UV's nodig
+        foreach (var r in go.GetComponentsInChildren<MeshRenderer>(true)) r.receiveGI = ReceiveGI.LightProbes;   // no lightmap UVs needed
         foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
         {
             if (!mf.sharedMesh) continue;
@@ -568,13 +568,13 @@ public static class HallPropsLayout
         var go = GameObject.Find(name);
         var r = go ? go.GetComponent<Renderer>() : null;
         if (r) return r.bounds;
-        Debug.LogWarning($"[HallPropsLayout] '{name}' niet gevonden, ik gebruik de maten uit Room.fbx.");
+        Debug.LogWarning($"[HallPropsLayout] '{name}' not found, using the dimensions from Room.fbx.");
         return fallback;
     }
 
     /// <summary>
-    /// Wereldrichting (bij yaw 0) van de achterkant: de kant waar het draaipunt tegenaan ligt (wandkastjes, beugels).
-    /// Ligt het draaipunt ongeveer in het midden, dan de Blender-conventie: voorkant = +Z, dus achterkant = -Z.
+    /// World direction (at yaw 0) of the back: the side the pivot lies against (wall boxes, brackets).
+    /// If the pivot is roughly in the middle, the Blender convention applies: front = +Z, so back = -Z.
     /// </summary>
     static Vector3 BackDirection(GameObject go)
     {
@@ -606,7 +606,7 @@ public static class HallPropsLayout
 
     static Vector3 Along(Wall w) => w == Wall.North || w == Wall.South ? Vector3.right : Vector3.forward;
 
-    /// <summary>Punt op 'offset' meter van een muur, de hal in.</summary>
+    /// <summary>Point 'offset' meters from a wall, into the hall.</summary>
     static Vector3 OnWall(Wall w, float along, float y, float offset)
     {
         switch (w)
@@ -618,12 +618,12 @@ public static class HallPropsLayout
         }
     }
 
-    // ---------------------------------------------------------------- botsingscontrole
+    // ---------------------------------------------------------------- collision check
 
     /// <summary>
-    /// Raster van 20 cm met per vak de laagste en hoogste bezette hoogte. De torens worden uit hun driehoeken
-    /// opgebouwd (de bounding box van TowerConstellation is de hele hal); al het andere als bounding box.
-    /// Objecten groter dan 12 m (hal, kraan) tellen niet mee.
+    /// 20 cm grid with the lowest and highest occupied height per cell. The towers are built up from their triangles
+    /// (the bounding box of TowerConstellation is the whole hall); everything else as a bounding box.
+    /// Objects larger than 12 m (hall, crane) do not count.
     /// </summary>
     static void BuildGrid()
     {
@@ -642,10 +642,10 @@ public static class HallPropsLayout
             }
             Bounds b = r.bounds;
             if (b.size.x > 12f || b.size.z > 12f) continue;
-            if (b.max.y < hall.min.y - 0.5f || b.min.y > hall.max.y) continue;   // o.a. de UI-camera op y = -100
+            if (b.max.y < hall.min.y - 0.5f || b.min.y > hall.max.y) continue;   // e.g. the UI camera at y = -100
             Occupy(b, r.name);
         }
-        if (!tower) Debug.LogWarning($"[HallPropsLayout] '{TOWER_OBJECT}' niet gevonden: geen botsingscontrole met de torens.");
+        if (!tower) Debug.LogWarning($"[HallPropsLayout] '{TOWER_OBJECT}' not found: no collision check against the towers.");
     }
 
     static void SampleTriangles(Renderer r)
@@ -690,7 +690,7 @@ public static class HallPropsLayout
 
     static bool Blocked(Bounds b, out string by)
     {
-        const float shrink = 0.05f;   // randen mogen elkaar raken
+        const float shrink = 0.05f;   // edges may touch
         Vector2Int lo = Key(b.min.x + shrink, b.min.z + shrink), hi = Key(b.max.x - shrink, b.max.z - shrink);
         for (int x = lo.x; x <= hi.x; x++)
         {
@@ -707,11 +707,11 @@ public static class HallPropsLayout
         return false;
     }
 
-    // ---------------------------------------------------------------- oppervlakken
+    // ---------------------------------------------------------------- surfaces
 
     /// <summary>
-    /// Hoogtes van de oppervlakken van 'support' onder punt (x, z), van boven naar beneden. Zet tijdelijk
-    /// MeshColliders op het object en tast met een bolletje (vangt ook draadroosters) steeds verder omlaag.
+    /// Heights of the surfaces of 'support' below point (x, z), from top to bottom. Temporarily adds
+    /// MeshColliders to the object and probes further and further down with a small sphere (also catches wire grids).
     /// </summary>
     static List<float> SurfaceHeights(GameObject support, Vector3 at)
     {
@@ -736,7 +736,7 @@ public static class HallPropsLayout
                 if (hit.collider is MeshCollider mc && added.Contains(mc) && hit.distance > 0f) best = Mathf.Min(best, hit.point.y);
             if (best == float.MaxValue) break;
             heights.Add(best);
-            y = best - 0.06f;   // net onder deze plank verder zoeken
+            y = best - 0.06f;   // continue searching just below this shelf
         }
 
         foreach (var col in added) Object.DestroyImmediate(col);

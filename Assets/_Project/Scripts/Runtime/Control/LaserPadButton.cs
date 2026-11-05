@@ -39,6 +39,15 @@ namespace EinsteinTelescope.Laser
             }
         }
 
+        private void Start()
+        {
+            // The LASER (wavelength) and IR VIEWER buttons were removed: hide any that are still in the scene.
+            if (LaserControlPad.IsRetiredAction(action))
+            {
+                gameObject.SetActive(false);
+            }
+        }
+
         public void OnPointerDown(PointerEventData eventData)
         {
             if (eventData != null && eventData.button != PointerEventData.InputButton.Left)
@@ -56,7 +65,7 @@ namespace EinsteinTelescope.Laser
         /// <summary>Press the button (also usable from other input, e.g. an XR interactable's Select Entered).</summary>
         public void Press()
         {
-            if (m_Pressed || Pad == null)
+            if (m_Pressed || Pad == null || LaserControlPad.IsRetiredAction(action))
             {
                 return;
             }

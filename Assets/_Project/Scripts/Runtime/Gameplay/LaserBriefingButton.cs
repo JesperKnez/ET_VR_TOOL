@@ -5,6 +5,7 @@ namespace EinsteinTelescope.Laser
 {
     /// <summary>
     /// A button on the <see cref="LaserBriefingPanel"/> (close, page tabs, back, next/start).
+    /// NextPage on the last page reads START and closes the briefing.
     /// Clicked with XR controller rays (XR UI Input Module), the XR Device Simulator or the mouse.
     /// </summary>
     public class LaserBriefingButton : MonoBehaviour, IPointerClickHandler
@@ -16,7 +17,7 @@ namespace EinsteinTelescope.Laser
             PreviousPage,
             ShowObjective,
             ShowControls,
-            ShowPhysics
+            ShowPhysics   // old third tab: the physics page is gone, so it opens the last page
         }
 
         [SerializeField] private BriefingAction action = BriefingAction.Close;
@@ -57,7 +58,7 @@ namespace EinsteinTelescope.Laser
                 case BriefingAction.PreviousPage: panel.PreviousPage(); break;
                 case BriefingAction.ShowObjective: panel.ShowPage(0); break;
                 case BriefingAction.ShowControls: panel.ShowPage(1); break;
-                case BriefingAction.ShowPhysics: panel.ShowPage(2); break;
+                case BriefingAction.ShowPhysics: panel.ShowPage(LaserBriefingPanel.PageCount - 1); break;
             }
         }
     }

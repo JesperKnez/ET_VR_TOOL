@@ -3,15 +3,15 @@ using EinsteinTelescope.Laser;
 using UnityEngine;
 
 /// <summary>
-/// Houdt de laserstraal zichtbaar vanuit de control room. Carlo's straal is fysiek ±1,8 cm breed: prima op 2,5 m,
-/// maar in de torens (13-25 m van de speler) dunner dan een pixel. Nadat de emitters hun lijnen hebben getekend,
-/// wordt elke lijn verbreed tot minstens MIN_ANGLE_DEGREES gezien vanaf de spelerscamera.
-/// Ver weg dus breder, van dichtbij blijft de echte dikte. Maakt zichzelf aan bij Play.
+/// Keeps the laser beam visible from the control room. Carlo's beam is physically ±1.8 cm wide: fine at 2.5 m,
+/// but in the towers (13-25 m from the player) thinner than a pixel. After the emitters have drawn their lines,
+/// every line is widened to at least MIN_ANGLE_DEGREES as seen from the player camera.
+/// So it is wider far away, while up close it keeps its real thickness. Creates itself on Play.
 /// </summary>
-[DefaultExecutionOrder(10000)]   // na LaserEmitter (die zet elke LateUpdate de breedte opnieuw)
+[DefaultExecutionOrder(10000)]   // after LaserEmitter (which sets the width again every LateUpdate)
 public class LaserBeamMinWidth : MonoBehaviour
 {
-    const float MIN_ANGLE_DEGREES = 0.1f;   // ±2,5 pixels op een Quest 3
+    const float MIN_ANGLE_DEGREES = 0.1f;   // ±2.5 pixels on a Quest 3
 
     static readonly List<LineRenderer> s_Lines = new List<LineRenderer>();
     Camera eye;

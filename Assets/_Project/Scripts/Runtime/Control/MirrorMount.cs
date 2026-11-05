@@ -162,25 +162,62 @@ namespace EinsteinTelescope.Laser
         /// <summary>Raised (C#) for every discrete step (tap) on any mirror. Used for the click sound.</summary>
         public static event Action<MirrorMount> AnyStepped;
 
+        /// <summary>
+        /// Raised (C#) when the player moves any mirror: a step, the start of a hold move or a knob/slider.
+        /// Not raised for moves made by code (level reset, undo). The objective starts its timer on it.
+        /// </summary>
+        public static event Action<MirrorMount> AnyPlayerInput;
+
         /// <summary>True while a hold input keeps the mirror moving.</summary>
         public bool IsHoldMoving => m_HoldInput != Vector2.zero;
 
+        /// <summary>
+        /// While true the player's steps, hold moves and knobs are ignored (e.g. after the level is completed).
+        /// Code can still move the mirror (ResetToStart, SetCommandedAngles).
+        /// </summary>
+        public bool InputLocked
+        {
+            get => m_InputLocked;
+            set
+            {
+                m_InputLocked = value;
+                if (value)
+                {
+                    m_HoldInput = Vector2.zero;
+                    m_HoldWasAtLimit = false;
+                }
+            }
+        }
+
         private bool m_SuppressCommandEvent;
+        private bool m_InputLocked;
 
         // ----- Button-friendly API ------------------------------------------------------------
 
         /// <summary>Tilt left/right by a number of steps (positive = right).</summary>
         public void NudgeYaw(int steps)
         {
+            if (m_InputLocked)
+            {
+                return;
+            }
+
             SetCommandedAngles(RoundAngle(m_CommandedYaw + steps * CurrentStepDegrees), m_CommandedPitch);
             AnyStepped?.Invoke(this);
+            AnyPlayerInput?.Invoke(this);
         }
 
         /// <summary>Tilt up/down by a number of steps (positive = up).</summary>
         public void NudgePitch(int steps)
         {
+            if (m_InputLocked)
+            {
+                return;
+            }
+
             SetCommandedAngles(m_CommandedYaw, RoundAngle(m_CommandedPitch + steps * CurrentStepDegrees));
             AnyStepped?.Invoke(this);
+            AnyPlayerInput?.Invoke(this);
         }
 
         /// <summary>Removes float drift from repeated steps, so stepping back and forth lands on exactly 0.00 again.</summary>
@@ -211,10 +248,15 @@ namespace EinsteinTelescope.Laser
         /// </summary>
         public void SetHoldInput(Vector2 input)
         {
-            m_HoldInput = Vector2.ClampMagnitude(input, 1f);
+            bool wasMoving = m_HoldInput != Vector2.zero;
+            m_HoldInput = m_InputLocked ? Vector2.zero : Vector2.ClampMagnitude(input, 1f);
             if (m_HoldInput == Vector2.zero)
             {
                 m_HoldWasAtLimit = false;
+            }
+            else if (!wasMoving)
+            {
+                AnyPlayerInput?.Invoke(this);
             }
         }
 
@@ -225,10 +267,28 @@ namespace EinsteinTelescope.Laser
         public void StopHoldMove() => SetHoldInput(Vector2.zero);
 
         /// <summary>For a slider or knob: 0 = full left, 0.5 = centre, 1 = full right.</summary>
-        public void SetYawNormalized(float value01) => SetCommandedAngles(Mathf.Lerp(-maxYawDegrees, maxYawDegrees, Mathf.Clamp01(value01)), m_CommandedPitch);
+        public void SetYawNormalized(float value01)
+        {
+            if (m_InputLocked)
+            {
+                return;
+            }
+
+            SetCommandedAngles(Mathf.Lerp(-maxYawDegrees, maxYawDegrees, Mathf.Clamp01(value01)), m_CommandedPitch);
+            AnyPlayerInput?.Invoke(this);
+        }
 
         /// <summary>For a slider or knob: 0 = full down, 0.5 = centre, 1 = full up.</summary>
-        public void SetPitchNormalized(float value01) => SetCommandedAngles(m_CommandedYaw, Mathf.Lerp(-maxPitchDegrees, maxPitchDegrees, Mathf.Clamp01(value01)));
+        public void SetPitchNormalized(float value01)
+        {
+            if (m_InputLocked)
+            {
+                return;
+            }
+
+            SetCommandedAngles(m_CommandedYaw, Mathf.Lerp(-maxPitchDegrees, maxPitchDegrees, Mathf.Clamp01(value01)));
+            AnyPlayerInput?.Invoke(this);
+        }
 
         public void SetFineMode(bool fine) => m_FineMode = fine;
         public void ToggleFineMode() => m_FineMode = !m_FineMode;
@@ -455,6 +515,7 @@ namespace EinsteinTelescope.Laser
             s_ActiveMounts.Clear();
             AnyActuatorLimitReached = null;
             AnyStepped = null;
+            AnyPlayerInput = null;
         }
     }
 }

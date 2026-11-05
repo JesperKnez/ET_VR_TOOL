@@ -13,7 +13,7 @@ public static class MirrorCameraViewButtonSetup
 {
     const string ButtonName = "View Camera";
 
-    [MenuItem("Tools/Einstein Telescope/Laser/Mirror camera: VIEW-knop toevoegen", priority = 40)]
+    [MenuItem("Tools/Einstein Telescope/Laser/Mirror camera: Add VIEW button", priority = 40)]
     static void AddButton()
     {
         LaserPadButton undo = null, next = null, previous = null, view = null;
@@ -30,7 +30,7 @@ public static class MirrorCameraViewButtonSetup
 
         if (!undo || !next || !previous)
         {
-            Debug.LogError("[MirrorCameraViewButtonSetup] UNDO-, PREV- of NEXT-knop niet gevonden in de scene.");
+            Debug.LogError("[MirrorCameraViewButtonSetup] UNDO, PREV or NEXT button not found in the scene.");
             return;
         }
 
@@ -46,7 +46,7 @@ public static class MirrorCameraViewButtonSetup
         else
         {
             var copy = Object.Instantiate(undo.gameObject, undoRect.parent);
-            Undo.RegisterCreatedObjectUndo(copy, "VIEW-knop toevoegen");
+            Undo.RegisterCreatedObjectUndo(copy, "Add VIEW button");
             copy.name = ButtonName;
             viewRect = (RectTransform)copy.transform;
 
@@ -55,7 +55,7 @@ public static class MirrorCameraViewButtonSetup
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        // Onder NEXT, op dezelfde afstand als UNDO onder PREV
+        // Under NEXT, at the same distance as UNDO under PREV
         viewRect.anchorMin = undoRect.anchorMin;
         viewRect.anchorMax = undoRect.anchorMax;
         viewRect.pivot = undoRect.pivot;
@@ -68,7 +68,7 @@ public static class MirrorCameraViewButtonSetup
         var label = viewRect.GetComponentInChildren<Text>(true);
         if (label) label.text = "VIEW";
 
-        // Een eerdere versie zette de knop op het wereldcanvas van het camerascherm, dat niet op de monitor staat
+        // An earlier version put the button on the camera screen's world canvas, which is not on the monitor
         var mirrorCamera = Object.FindFirstObjectByType<LaserMirrorCamera>(FindObjectsInactive.Include);
         if (mirrorCamera)
         {
@@ -83,6 +83,6 @@ public static class MirrorCameraViewButtonSetup
 
         EditorSceneManager.MarkSceneDirty(viewRect.gameObject.scene);
         Selection.activeGameObject = viewRect.gameObject;
-        Debug.Log("[MirrorCameraViewButtonSetup] VIEW-knop onder NEXT gezet. Sla de scene op.");
+        Debug.Log("[MirrorCameraViewButtonSetup] VIEW button placed under NEXT. Save the scene.");
     }
 }

@@ -25,6 +25,11 @@ namespace EinsteinTelescope.Laser
         [Tooltip("Briefing page 3: what happens to the laser, with simple maths.")]
         [SerializeField, TextArea(4, 20)] private string physicsText = "";
 
+        [Header("Stars")]
+        [Tooltip("Finish within this time (seconds) with at most 1 safety incident for 3 stars; within twice this time for 2 stars. " +
+                 "0 = use the par time of the LaserAlignmentObjective.")]
+        [SerializeField, Min(0f)] private float parTimeSeconds = 0f;
+
         [Header("Optics")]
         [SerializeField] private LaserEmitter laser = null;
 
@@ -48,6 +53,9 @@ namespace EinsteinTelescope.Laser
         public string ObjectiveText => objectiveText;
         public string ControlsTip => controlsTip;
         public string PhysicsText => physicsText;
+
+        /// <summary>3-star time limit in seconds; 0 = the objective's default.</summary>
+        public float ParTimeSeconds => parTimeSeconds;
         public LaserEmitter Laser => laser;
         public MirrorMount[] Mirrors => mirrors;
         public LaserTarget[] Checkpoints => checkpoints;
@@ -68,18 +76,27 @@ namespace EinsteinTelescope.Laser
             return index >= 0 && index < checkpointHints.Length ? checkpointHints[index] : string.Empty;
         }
 
-        /// <summary>Checkpoints followed by the detector: everything that must be aligned at the same time.</summary>
+        /// <summary>
+        /// Checkpoints followed by the detector: everything that must be aligned at the same time.
+        /// Empty slots are left out (an empty slot can never be aligned, so the level could never be won).
+        /// </summary>
         public LaserTarget[] AllTargets()
         {
-            int count = checkpoints.Length + (detector != null ? 1 : 0);
-            var all = new LaserTarget[count];
-            System.Array.Copy(checkpoints, all, checkpoints.Length);
-            if (detector != null)
+            var all = new System.Collections.Generic.List<LaserTarget>(checkpoints.Length + 1);
+            foreach (LaserTarget checkpoint in checkpoints)
             {
-                all[count - 1] = detector;
+                if (checkpoint != null)
+                {
+                    all.Add(checkpoint);
+                }
             }
 
-            return all;
+            if (detector != null)
+            {
+                all.Add(detector);
+            }
+
+            return all.ToArray();
         }
     }
 }

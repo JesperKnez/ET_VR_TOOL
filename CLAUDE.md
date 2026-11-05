@@ -66,13 +66,13 @@ Namespaces: `EinsteinTelescope.Laser` (laser), `EinsteinTelescope.Props.Editor` 
 | Menu | Script | Van |
 |---|---|---|
 | `Tools → Einstein Telescope → Laser → …` | `LaserSetupMenu.cs` | Carlo |
-| `Tools → Einstein Telescope → Instructiebord → Briefing op bord zetten` | `InstructionBoardSetup.cs` | Jesper |
-| `Tools → Einstein Telescope → XR → Restanten Composition Layers opruimen` | `XRCleanup.cs` | Jesper |
-| `Tools → Einstein Telescope → Torens → 1/2/3 …` | `TowerMaterialSetup.cs` | Jesper |
-| `Tools → Einstein Telescope → Torens → Vloermarkering rond torens en buizen` | `FloorMarkingSetup.cs` | Jesper |
-| `Tools → Einstein Telescope → Belichting → Post-processing afstemmen op foto's` | `HallLookSetup.cs` | Jesper |
-| `Tools → Einstein Telescope → Control room → Muur: geschilderd stucwerk` | `ControlRoomWallSetup.cs` | Jesper |
-| `Tools → Einstein Telescope → Hal → Props plaatsen / Props weghalen` | `HallPropsLayout.cs` | Jesper |
+| `Tools → Einstein Telescope → Instruction board → Put briefing on board` | `InstructionBoardSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → XR → Clean up Composition Layers leftovers` | `XRCleanup.cs` | Jesper |
+| `Tools → Einstein Telescope → Towers → 1/2/3 …` | `TowerMaterialSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Towers → Floor marking around towers and tubes` | `FloorMarkingSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Lighting → Match post-processing to photos` | `HallLookSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Control room → Wall: painted plaster` | `ControlRoomWallSetup.cs` | Jesper |
+| `Tools → Einstein Telescope → Hall → Place props / Remove props` | `HallPropsLayout.cs` | Jesper |
 | `Tools → ET → Setup Curved Monitor UI` | `MonitorUISetup.cs` | Jesper |
 | `Tools → ET → Create Panel Lights` | `CreatePanelLights.cs` | Jesper |
 | `Tools → ETpathfinder Tower Builder` | `ETpfTowerBuilder.cs` | David |
@@ -98,8 +98,8 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 - De shadernaam `EinsteinTelescope/LaserBeam` (in `LaserBeam.shader`) wordt via `Shader.Find` gezocht. Niet hernoemen.
 
 ### Laser in de torens (Jesper, nov 2026)
-- Carlo's opstelling was een compacte testopstelling (armen van 2,5 m in een lab-box). `LaserTowerLayout.cs` (`Tools → Einstein Telescope → Laser → Levels in de torens plaatsen`) verplaatst de **bestaande** level-objecten naar de torens en houdt alle koppelingen intact. Daarna zijn de regels "alleen als geheel verplaatsen" en "Build Demo" niet meer van toepassing: **`Build Demo Interferometer In Scene` niet meer gebruiken**, want die zet de testopstelling terug en verbreekt de koppelingen met de curved monitor.
-- Torenlayout (gemeten met `Torens → Torenlayout meten`, wereld x/z; bundelhoogte 1,33 m, armen 90°, alles op 45°-lijnen):
+- Carlo's opstelling was een compacte testopstelling (armen van 2,5 m in een lab-box). `LaserTowerLayout.cs` (`Tools → Einstein Telescope → Laser → Place levels in the towers`) verplaatst de **bestaande** level-objecten naar de torens en houdt alle koppelingen intact. Daarna zijn de regels "alleen als geheel verplaatsen" en "Build Demo" niet meer van toepassing: **`Build Demo Interferometer In Scene` niet meer gebruiken**, want die zet de testopstelling terug en verbreekt de koppelingen met de curved monitor.
+- Torenlayout (gemeten met `Towers → Measure tower layout`, wereld x/z; bundelhoogte 1,33 m, armen 90°, alles op 45°-lijnen):
 
   | Toren | x, z | Rol |
   |---|---|---|
@@ -124,8 +124,16 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 - De dartboard-HUD bestaat uit 3D-meshes onder `Panel_HUD` en wordt door dezelfde UI-camera gerenderd.
 
 ### Instructiebord
-- De TV aan de muur (`InstructionBoard` / `InstructionBoard_Screen` in `ET_ControlRoom_Props`) toont Carlo's bestaande briefing (`Briefing Screen (floating)`, `LaserBriefingPanel`). Menu: `Tools → Einstein Telescope → Instructiebord → Briefing op bord zetten` zet de briefing precies op het scherm en geeft het scherm de donkere `ET2_BoardScreen_Active`. Opnieuw draaien na verplaatsen van de TV.
+- De TV aan de muur (`InstructionBoard` / `InstructionBoard_Screen` in `ET_ControlRoom_Props`) toont Carlo's bestaande briefing (`Briefing Screen (floating)`, `LaserBriefingPanel`). Menu: `Tools → Einstein Telescope → Instruction board → Put briefing on board` zet de briefing precies op het scherm en geeft het scherm de donkere `ET2_BoardScreen_Active`. Opnieuw draaien na verplaatsen van de TV.
 - Verder geen eigen logica: de level manager, HELP en de X/START-knoppen openen en sluiten de briefing zoals altijd. (Het oude standby-systeem `InstructionBoard.cs` met onzichtbare knop is verwijderd; `ET2_BoardScreen`/`ET_BoardStandby.png` worden niet meer gebruikt.)
+- **Briefing (nov 2026): 2 pagina's, OBJECTIVE en CONTROLS.** De physics-tab wordt bij Play verborgen. De teksten staan in `Runtime/Gameplay/LaserBriefingTexts.cs` (per level, gezocht op titel); `LaserBriefingPanel.useBuiltInTexts` (standaard aan) laat die winnen van de inspector-teksten in de scene. Teksten aanpassen gebeurt dus daar, niet in de scene. Het sterrenblok komt live uit `LaserAlignmentObjective.DescribeStarRules()`.
+
+### Levelafronding en resultaten (nov 2026)
+- De timer start bij het sluiten van de briefing **of** bij de eerste spiegelbeweging (`startOnFirstMirrorMove`). Eerder startte hij alleen bij het sluiten, waardoor een level nooit voltooid werd.
+- Sterren: 3 = binnen de par-tijd en ≤ 1 incident, 2 = binnen 2× par en ≤ 4 incidenten, anders 1. Par-tijd per level in `LaserLevel.parTimeSeconds` (menu `Laser → Set star par times`: 2:00 / 2:00 / 4:00).
+- `LaserMonitorResults` (maakt zichzelf aan bij Play) toont bij afronden een "LEVEL COMPLETE"-scherm over de hele curved monitor met sterren, tijd, incidenten, persoonlijk record en RETRY / NEXT LEVEL. Het zwevende `Results Card` staat midden in de hal en wordt in `Room_Scene` niet meer getoond. Na afronden zijn de spiegels vergrendeld (`MirrorMount.InputLocked`).
+- Testen: `Debug/LaserLevelDevShortcuts.cs` (editor/dev builds): **F6** = level direct voltooien, **F7** = alle spiegels op hun ontwerphoek (level hoort dan binnen enkele seconden voltooid te zijn, anders komt het objective-rapport in de Console).
+- De knoppen LASER (golflengte) en IR VIEWER zijn weg: de laser is altijd groen 532 nm. Uit de scene halen met `Tools → Einstein Telescope → Monitor → Remove LASER and IR VIEWER buttons`; bij Play worden ze ook verborgen.
 
 ### Signaalzuil
 - `SignalTower.cs` op `SignalTower_Wall`/`SignalTower_Base` zet de lenzen (`ET2_Signal_Red/_Amber/_Green`) aan/uit via `_EmissionColor`. Aansturen met `SetState(SignalTower.State.…)`. Herkent de lenzen aan de materiaalnaam, dus die namen niet wijzigen.
@@ -150,7 +158,7 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 ### Hal aankleden (`HallPropsLayout`, nov 2026)
 - Hal volgens `Room.fbx`: x ±17,15, z ±11, vloer 0, plafond 8 m. Control room in de hoek x −17,15..−9,15, z −11..−3, vloer op y ≈ 2,2. Muren in het script: noord = z+, zuid = z−, oost = x+, west = x−.
 - Met de hand in de scene gezet (3 nov 2026, niet door het script): `ETP_OverheadCrane` over de hele hal (schaal 1,71 × 2,12, rails langs noord- en zuidmuur op ±6,5–7,5 m), `ETP_MastLift` op (−12,3, 0, 2,9), en `ETP_OpticalTable`, `ETP_ControlCabinets_Floor` en `ETP_ToolTrolley` in de control room. Let op: de kraan is non-uniform geschaald, dus haken en takels zijn mee uitgerekt.
-- `Tools → Einstein Telescope → Hal → Props plaatsen` zet alles onder één object `Hall_Props` (per zone een kind): technische rij langs de noordmuur (rekken, ringbandenkast, schakelkasten, 19"-racks, kabelgoot op 3 m met kabels die de kasten in zakken, leidingen D110/D60 op 4,3/4,7 m), west- en oostmuur (racks, bedieningskastje, luchtbehandelingskast, rekken met onderdelen), AED/EHBO naast de control room, opslag van reserveonderdelen in de zuidoosthoek, een werkplek tussen de armen met rolsteiger bij T4, en HEPA-/wervelroosters tussen de lichtpanelen. Opnieuw draaien vervangt `Hall_Props`; bestaande objecten blijven onaangeroerd.
+- `Tools → Einstein Telescope → Hall → Place props` zet alles onder één object `Hall_Props` (per zone een kind): technische rij langs de noordmuur (rekken, ringbandenkast, schakelkasten, 19"-racks, kabelgoot op 3 m met kabels die de kasten in zakken, leidingen D110/D60 op 4,3/4,7 m), west- en oostmuur (racks, bedieningskastje, luchtbehandelingskast, rekken met onderdelen), AED/EHBO naast de control room, opslag van reserveonderdelen in de zuidoosthoek, een werkplek tussen de armen met rolsteiger bij T4, en HEPA-/wervelroosters tussen de lichtpanelen. Opnieuw draaien vervangt `Hall_Props`; bestaande objecten blijven onaangeroerd.
 - Botsingscontrole: een raster van 20 cm, opgebouwd uit de driehoeken van `TowerConstellation` en de bounding boxes van alles wat er al staat (behalve de laserdemo, lijnen en objecten > 12 m, zoals hal en kraan). Botst een prop, dan schuift hij tot 1 m op; lukt dat niet, dan wordt hij overgeslagen. Beide staan in de Console.
 - Oriëntatie: wandprops krijgen de kant waar het draaipunt tegenaan ligt tegen de muur. Ligt het draaipunt in het midden, dan geldt voorkant = +Z (Blender −Y). Staat iets achterstevoren, zet dan `flip: true` bij die regel. Rechte stukken (leidingen, kabels) worden opgerekt, goten in stukken van 1 m gelegd. Spullen op planken en tafels worden met tijdelijke MeshColliders op het oppervlak gezet.
 - Props krijgen ContributeGI + Batching Static en **Receive GI = Light Probes**: de kits hebben geen lightmap-UV's. Daarna opnieuw baken. Het script meldt het totaal aantal tris (Quest-budget).
@@ -202,14 +210,14 @@ Wordt opgepakt in Claude Code. Eerst materialen en instellingen inspecteren, dan
 - `RP_Hall` staat op (0, 4, 0), precies in het midden van `TowerConstellation` (dat ook op de oorsprong staat). Zit het opnamepunt binnenin een tank, dan weerspiegelt al het metaal de donkere binnenkant en worden de torens zwart. Verplaats in dat geval de probe en compenseer met Box Offset.
 - **Doel-look (foto's van de echte hal):** tankmantels zijn champagnekleurig, satijnmat RVS met zachte, brede reflecties en een paar lichte vlekken. Leidingen, flenzen en poortdeksels zijn lichter en neutraal RVS. Lasnaden zijn iets donkerder en warmer. De hal is high-key en heel wit met heldere LED-panelen. Blauwe steunbokken staan onder de leidingen.
 - Slots: `Beam_Glass` (tankmantels en bundelbuizen, ondanks de naam) en `Yellowy_Steel` → `M_Tower_BlastedSteel` (champagne, smoothness ±0.5); `PolishedSteel` → `M_Tower_BrushedSteel` (neutraal, ±0.6). Klopt dat niet, wissel dan de twee regels in `Slots` om en draai stap 2 opnieuw.
-- Post-processing: `Tools → Einstein Telescope → Belichting → Post-processing afstemmen op foto's` (`HallLookSetup.cs`) zet de Global Volume op Neutral tonemapping (was ACES, dat wit naar grijs drukt), contrast +10, saturation -5 en bloom 0.35 bij threshold 1.
+- Post-processing: `Tools → Einstein Telescope → Lighting → Match post-processing to photos` (`HallLookSetup.cs`) zet de Global Volume op Neutral tonemapping (was ACES, dat wit naar grijs drukt), contrast +10, saturation -5 en bloom 0.35 bij threshold 1.
 - Opnieuw draaien is veilig: bestaande assets worden bijgewerkt en houden hun GUID. De textures zijn procedureel (ruis in C#), dus aanpassen gaat via de functies `BrushedSteel()`/`BlastedSteel()` in het script, niet in een tekenprogramma.
 - `M_Tower_Weld` en `M_Tower_Bolts` zijn kopieën van `WeldTube` en `BoltDecal` (ze houden hun lasrups- en bouttextures), maar met RVS-waarden. Stap 1 kopieert ze telkens opnieuw van die oude materialen, dus pas de oude niet meer aan.
 - Geborsteld RVS: de lijnen lopen langs U. Staan ze de verkeerde kant op, draai dan de UV's 90° in Blender. Met tiling in Unity kun je de richting niet draaien.
 - Na stap 2: belichting opnieuw baken.
 
 ### Vloermarkering (zwart-geel)
-- `FloorMarkingSetup.cs` (`Torens → Vloermarkering rond torens en buizen`) meet torens en bundelbuizen uit de mesh van `TowerConstellation` (dezelfde herkenning als `Torenlayout meten`, daarom zijn die helpers in `TowerLayoutProbe` `internal`) en legt een ring om elke toren en twee stroken langs elke buis, van ring tot ring.
+- `FloorMarkingSetup.cs` (`Towers → Floor marking around towers and tubes`) meet torens en bundelbuizen uit de mesh van `TowerConstellation` (dezelfde herkenning als `Measure tower layout`, daarom zijn die helpers in `TowerLayoutProbe` `internal`) en legt een ring om elke toren en twee stroken langs elke buis, van ring tot ring.
 - Geen URP Decal Projectors (DBuffer is te duur op de Quest en screen-space decals hebben geen smoothness), maar één platte mesh `Models/Room/FloorMarkings.asset` 2 mm boven de vloer, op het object `FloorMarkings` in de scene. Eén draw call, geen schaduw, wel lightmap-UV's (Contribute GI).
 - Materiaal `Materials/Room/M_FloorHazard` (URP Lit, metallic 0, smoothness ±0.75 uit de map, matter op slijtplekken) met procedurele textures `Textures/Room/T_FloorHazard_*`. Eén tegel is 12 × 12 cm; uiterlijk aanpassen in `Hazard()`, maten in de constanten bovenaan.
 - Vloerhoogte via een raycast naast de eerste toren; zonder vloer-collider de onderkant van `TowerConstellation` (staat in de Console). Opnieuw draaien is veilig (GUID's blijven). Daarna opnieuw baken.
@@ -236,7 +244,7 @@ Wordt opgepakt in Claude Code. Eerst materialen en instellingen inspecteren, dan
 - **Metallic materialen worden zwart zonder reflection probe.** Controleer bij donker metaal eerst of het object binnen een gebakken probe valt.
 - **Reflection probe Blend Distance** kan een object op de grens van twee probes de "verkeerde" reflectie geven (zie `RP_ControlRoom` hierboven).
 - **OpenXR Composition Layers geeft een stroom NullReferenceExceptions** (`OpenXRLayerProvider.SetActiveLayersForHandlers`) zodra er een echte headset aan hangt. Dit is een bekende Unity-bug. Composition Layers werd binnengehaald door de packages *Unity OpenXR Android XR* en *Unity OpenXR Meta*; die zijn daarom verwijderd. **Voeg ze niet opnieuw toe**, tenzij er echt mixed reality (passthrough of AR Foundation) nodig is.
-- Na het verwijderen van die packages kunnen er nog **"missing script"-componenten** of lege feature-verwijzingen in `Assets/XR/Settings/` achterblijven. Gevonden: 28 verweesde features in `OpenXRPackageSettings.asset`, een `CompositionLayer` + `CompositionOutline` op `Global Volume` en een verborgen object `Default Scene Layer` in `Room_Scene`. Opruimen met `Tools → Einstein Telescope → XR → Restanten Composition Layers opruimen` en daarna de scene opslaan. De map `Assets/CompositionLayers/` (achtergebleven instellingen) is verwijderd.
+- Na het verwijderen van die packages kunnen er nog **"missing script"-componenten** of lege feature-verwijzingen in `Assets/XR/Settings/` achterblijven. Gevonden: 28 verweesde features in `OpenXRPackageSettings.asset`, een `CompositionLayer` + `CompositionOutline` op `Global Volume` en een verborgen object `Default Scene Layer` in `Room_Scene`. Opruimen met `Tools → Einstein Telescope → XR → Clean up Composition Layers leftovers` en daarna de scene opslaan. De map `Assets/CompositionLayers/` (achtergebleven instellingen) is verwijderd.
 - **Testen met een gamepad:** `LaserGamepadControls` (DualSense of Xbox): linker stick = vloeiend kantelen, D-pad = losse stap, L1/R1 = spiegel kiezen, ✕ = fijn/grof, □ = reset, △ = undo, ○ = sluiter, Options = volgend level, Create = briefing. De XR Device Simulator zelf heeft alleen toetsenbord- en muisbindingen. Draait Steam, zet dan Steam Input voor PlayStation-controllers uit, anders onderschept Steam de DualSense.
 - **XR Device Simulator uitzetten bij testen met de echte headset.** Met "Remove Other HMD Devices" aan verbergt hij de Quest.
 - Orthografische camera's mogen alleen naar een RenderTexture renderen (mirror camera, UI-camera), nooit de XR-camera zijn.
