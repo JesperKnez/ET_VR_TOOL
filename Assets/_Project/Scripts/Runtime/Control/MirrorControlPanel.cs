@@ -144,21 +144,61 @@ namespace EinsteinTelescope.Laser
         public void SelectPrevious() => SelectMirror(Wrap(m_SelectedIndex - 1));
 
         // ----- Step buttons -----------------------------------------------------------------------
+        //
+        // The arrow buttons mean "move the spot": ► = the spot goes right on the camera view of this mirror's target
+        // (the dartboard), ▲ = up. Which mirror axis does that, and in which direction, depends on how the mirror is
+        // mounted and how many mirrors come after it (each one mirrors the picture). LaserMirrorCamera measures that and
+        // stores it per mirror in ArrowMaps. Without a stored map an arrow is simply the mirror's own axis.
 
-        public void YawLeft() => SelectedMirror?.YawLeft();
-        public void YawRight() => SelectedMirror?.YawRight();
-        public void PitchUp() => SelectedMirror?.PitchUp();
-        public void PitchDown() => SelectedMirror?.PitchDown();
-        public void NudgeYaw(int steps) => SelectedMirror?.NudgeYaw(steps);
-        public void NudgePitch(int steps) => SelectedMirror?.NudgePitch(steps);
+        /// <summary>Per mirror: arrow (x = ►, y = ▲) to mirror axes: yaw = x * Right.x + y * Up.x, pitch = x * Right.y + y * Up.y.</summary>
+        public struct ArrowMap
+        {
+            public Vector2 Right;
+            public Vector2 Up;
+            public static readonly ArrowMap Identity = new ArrowMap { Right = new Vector2(1f, 0f), Up = new Vector2(0f, 1f) };
+            public Vector2 ToAxes(Vector2 arrow) => arrow.x * Right + arrow.y * Up;
+        }
+
+        public static readonly System.Collections.Generic.Dictionary<MirrorMount, ArrowMap> ArrowMaps = new System.Collections.Generic.Dictionary<MirrorMount, ArrowMap>();
+
+        public static ArrowMap MapFor(MirrorMount mirror) => mirror != null && ArrowMaps.TryGetValue(mirror, out ArrowMap map) ? map : ArrowMap.Identity;
+
+        /// <summary>One press of an arrow (x = ► / ◄, y = ▲ / ▼).</summary>
+        public void PressArrow(Vector2Int arrow)
+        {
+            MirrorMount mirror = SelectedMirror;
+            if (mirror == null)
+            {
+                return;
+            }
+
+            Vector2 axes = MapFor(mirror).ToAxes(arrow);
+            int yaw = Mathf.RoundToInt(axes.x), pitch = Mathf.RoundToInt(axes.y);
+            if (yaw != 0) mirror.NudgeYaw(yaw);
+            if (pitch != 0) mirror.NudgePitch(pitch);
+        }
+
+        public void YawLeft() => PressArrow(new Vector2Int(-1, 0));
+        public void YawRight() => PressArrow(new Vector2Int(1, 0));
+        public void PitchUp() => PressArrow(new Vector2Int(0, 1));
+        public void PitchDown() => PressArrow(new Vector2Int(0, -1));
+        public void NudgeYaw(int steps) => PressArrow(new Vector2Int(steps, 0));
+        public void NudgePitch(int steps) => PressArrow(new Vector2Int(0, steps));
 
         // ----- Hold buttons -----------------------------------------------------------------------
 
-        public void BeginHoldYawLeft() => SelectedMirror?.BeginHoldYawLeft();
-        public void BeginHoldYawRight() => SelectedMirror?.BeginHoldYawRight();
-        public void BeginHoldPitchUp() => SelectedMirror?.BeginHoldPitchUp();
-        public void BeginHoldPitchDown() => SelectedMirror?.BeginHoldPitchDown();
-        public void SetHoldInput(Vector2 input) => SelectedMirror?.SetHoldInput(input);
+        public void BeginHoldYawLeft() => SetHoldInput(new Vector2(-1f, 0f));
+        public void BeginHoldYawRight() => SetHoldInput(new Vector2(1f, 0f));
+        public void BeginHoldPitchUp() => SetHoldInput(new Vector2(0f, 1f));
+        public void BeginHoldPitchDown() => SetHoldInput(new Vector2(0f, -1f));
+
+        /// <summary>Hold / thumbstick input in arrow directions (x = right, y = up).</summary>
+        public void SetHoldInput(Vector2 input)
+        {
+            MirrorMount mirror = SelectedMirror;
+            if (mirror != null) mirror.SetHoldInput(MapFor(mirror).ToAxes(input));
+        }
+
         public void StopHoldMove() => SelectedMirror?.StopHoldMove();
 
         // ----- Knobs / sliders (0..1) -------------------------------------------------------------
