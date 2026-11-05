@@ -1,0 +1,16 @@
+{
+    "name": "EinsteinTelescope.Gamepads",
+    "rootNamespace": "EinsteinTelescope.Gamepads",
+    "references": [
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

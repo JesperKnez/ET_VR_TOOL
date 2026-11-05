@@ -344,6 +344,9 @@ public class LaserPlaytestBot : MonoBehaviour
             p.inRing = mirrorCamera.GoalInRing;
             Vector3 rel = mirrorCamera.LandingPoint - mirrorCamera.GoalPoint;
             p.plane = new Vector2(Vector3.Dot(rel, p.right), Vector3.Dot(rel, p.up));
+            // As shown on the monitor: the close-up can be flipped to match the dartboard
+            if (mirrorCamera.PictureFlippedX) { p.plane.x = -p.plane.x; p.dot.x = 1f - p.dot.x; p.ring.x = 1f - p.ring.x; }
+            if (mirrorCamera.PictureFlippedY) { p.plane.y = -p.plane.y; p.dot.y = 1f - p.dot.y; p.ring.y = 1f - p.ring.y; }
         }
 
         p.board = new Vector3[boardViews.Length];

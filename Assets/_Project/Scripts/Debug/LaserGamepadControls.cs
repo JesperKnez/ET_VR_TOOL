@@ -6,12 +6,13 @@ using UnityEngine.InputSystem;
 /// PS5 (DualSense) or Xbox controller for testing the laser game without aiming the rays.
 /// Creates itself on Play (only in the editor and in development builds), so nothing is needed in the scene.
 /// Works alongside Carlo's LaserDebugKeyboard.
-///   Left stick     tilt the selected mirror smoothly (push further = faster)
-///   D-pad          one step per press (precise)
+///   (Left stick, right stick, R2, gyro and R3: walking, pointing, pressing and looking, see GamepadPlaytestRig)
+///   D-pad          the arrows on the screen, one step per press
 ///   L1 / R1        previous / next mirror
 ///   Cross          fine / coarse
 ///   Square         mirror back to its start position
-///   Triangle       undo
+///   L2             undo
+///   Triangle       talk to Lumi (hold, see LumiListener)
 ///   Circle         laser shutter
 ///   Options        next level
 ///   Create         open / close the briefing
@@ -19,10 +20,7 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class LaserGamepadControls : MonoBehaviour
 {
-    const float DEADZONE = 0.15f;
-
     LaserLevelManager levelManager;
-    bool holding;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -40,20 +38,6 @@ public class LaserGamepadControls : MonoBehaviour
         var panel = MirrorControlPanel.FirstActive;
         if (pad == null || !panel) return;
 
-        // Stick: smooth, speed proportional to how far you push (starting again from 0 at the deadzone)
-        Vector2 stick = pad.leftStick.ReadValue();
-        float amount = Mathf.InverseLerp(DEADZONE, 1f, stick.magnitude);
-        if (amount > 0f)
-        {
-            panel.SetHoldInput(stick.normalized * amount);
-            holding = true;
-        }
-        else if (holding)
-        {
-            panel.StopHoldMove();
-            holding = false;
-        }
-
         // D-pad: single steps
         if (pad.dpad.left.wasPressedThisFrame) panel.NudgeYaw(-1);
         if (pad.dpad.right.wasPressedThisFrame) panel.NudgeYaw(1);
@@ -64,7 +48,7 @@ public class LaserGamepadControls : MonoBehaviour
         if (pad.rightShoulder.wasPressedThisFrame) panel.SelectNext();
         if (pad.buttonSouth.wasPressedThisFrame) panel.ToggleFineMode();
         if (pad.buttonWest.wasPressedThisFrame) panel.ResetSelectedToStart();
-        if (pad.buttonNorth.wasPressedThisFrame) panel.Undo();
+        if (pad.leftTrigger.wasPressedThisFrame) panel.Undo();   // Triangle is "talk to Lumi" (LumiListener)
 
         if (!levelManager) levelManager = FindAnyObjectByType<LaserLevelManager>();
         if (!levelManager) return;

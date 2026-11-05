@@ -1828,6 +1828,8 @@ namespace EinsteinTelescope.Laser
         public float GoalTolerance => m_GoalTolerance;
         public string GoalTargetName => m_GoalTarget != null ? m_GoalTarget.name : "";
         public bool GoalInRing => m_GuideInRing;
+        public bool PictureFlippedX => m_FlipX;
+        public bool PictureFlippedY => m_FlipY;
 
         /// <summary>Distance between dot and ring centre, in metres, in the plane of the picture.</summary>
         public float GoalError
