@@ -60,13 +60,13 @@ namespace EinsteinTelescope.Lumi
         /// <summary>True while the recording is being turned into text.</summary>
         public bool IsTranscribing { get; private set; }
 
-        /// <summary>What Whisper last understood (for the debug window).</summary>
+        /// <summary>What Whisper last understood.</summary>
         public string LastHeard { get; private set; } = string.Empty;
 
-        /// <summary>Why the last recording didn't become a question, if it didn't (for the debug window).</summary>
+        /// <summary>Why the last recording didn't become a question, if it didn't.</summary>
         public string LastProblem { get; private set; } = string.Empty;
 
-        /// <summary>"loading", "ready" or "no model": the state of the speech service (for the debug window).</summary>
+        /// <summary>"loading", "ready" or "no model": the state of the speech service.</summary>
         public string SpeechStatus => speech.IsReady ? "ready" : speech.IsLoading ? "loading" : "no model";
 
         /// <summary>True if a press of the talk button would start recording now.</summary>
@@ -105,21 +105,21 @@ namespace EinsteinTelescope.Lumi
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
             {
-                LastProblem = "no permission to use the microphone";
+                Report("no permission to use the microphone");
                 Permission.RequestUserPermission(Permission.Microphone);
                 return;
             }
 #endif
             if (Microphone.devices.Length == 0)
             {
-                LastProblem = "no microphone found";
+                Report("no microphone found");
                 return;
             }
 
             recording = Microphone.Start(null, false, maxSeconds, WhisperFrequency);
             if (recording == null)
             {
-                LastProblem = "the microphone could not start";
+                Report("the microphone could not start");
                 return;
             }
             IsListening = true;
@@ -170,7 +170,6 @@ namespace EinsteinTelescope.Lumi
             }
             catch (LumiSpeechException e)
             {
-                Debug.LogWarning("[Lumi] " + e.Message, this);
                 HeardNothing(e.Message);
             }
             catch (Exception e)
@@ -202,9 +201,15 @@ namespace EinsteinTelescope.Lumi
 
         private void HeardNothing(string why)
         {
-            LastProblem = why;
+            Report(why);
             SetMode(LumiMode.Idle);
             if (animator != null && animator.runtimeAnimatorController != null) animator.SetTrigger(LumiAnimatorParams.PuzzledId);
+        }
+
+        private void Report(string why)
+        {
+            LastProblem = why;
+            Debug.LogWarning("[Lumi] Didn't hear a question: " + why, this);
         }
 
         private static float AverageLevel(float[] samples)

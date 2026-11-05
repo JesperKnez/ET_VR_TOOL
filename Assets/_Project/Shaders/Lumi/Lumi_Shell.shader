@@ -1,8 +1,9 @@
 // Lumi's painted shell: satin white paint over metal, with bare metal showing on worn edges.
 //
-// Where the wear goes comes from T_Lumi_EdgeWear (baked in Blender from the mesh's rounded edges:
-// white = exposed edge). A noise pattern breaks that band up into chips, so it reads as chipped
-// paint rather than painted stripes. Everything else is URP Lit (see LumiForwardPass.hlsl).
+// Where the wear goes comes from T_Lumi_EdgeWear (baked in Blender: brightest on the sharpest edges and
+// corners, fading away from them). Noise turns that gradient into ragged chips, a slow pattern leaves
+// some stretches of edge clean, and small random specks appear anywhere on the shell.
+// Everything else is URP Lit (see LumiForwardPass.hlsl).
 Shader "EinsteinTelescope/Lumi/Shell"
 {
     Properties
@@ -14,12 +15,20 @@ Shader "EinsteinTelescope/Lumi/Shell"
         [Header(Bare Metal on Worn Edges)]
         _MetalColor("Metal Colour", Color) = (0.62, 0.64, 0.66, 1)
         _MetalSmoothness("Metal Smoothness", Range(0, 1)) = 0.7
+        _MetalMetallic("Metal Metallic (high = mirrors the room, so it looks black in a dark room)", Range(0, 1)) = 0.4
 
         [Header(Edge Wear)]
         [NoScaleOffset] _EdgeWearMap("Edge Wear Mask (T_Lumi_EdgeWear)", 2D) = "black" {}
-        _WearAmount("Wear Amount (0 = new, 1 = all bare metal)", Range(0, 1)) = 0.35
-        _WearSoftness("Chip Edge Softness", Range(0.01, 0.3)) = 0.06
+        _WearAmount("Wear Amount (0 = new, higher = spreads from the sharpest edges)", Range(0, 1)) = 0.5
+        _WearSoftness("Chip Edge Softness", Range(0.01, 0.3)) = 0.05
         _NoiseScale("Chip Pattern Scale (higher = smaller chips)", Range(20, 600)) = 180
+        _ChipBreakup("Chip Raggedness", Range(0, 1)) = 0.55
+        _PatchStrength("Clean Stretches (0 = wear along every edge)", Range(0, 1)) = 0.5
+        _PatchScale("Clean Stretch Size (higher = shorter stretches)", Range(1, 30)) = 7
+
+        [Header(Random Specks)]
+        _SpeckDensity("Speck Density (0 = none)", Range(0, 0.5)) = 0.05
+        _SpeckScale("Speck Scale (higher = smaller specks)", Range(20, 400)) = 110
 
         // URP Lit internals (kept so URP's shadow/depth passes and SRP code find what they expect)
         [HideInInspector] _Metallic("Metallic", Range(0, 1)) = 0
@@ -46,7 +55,7 @@ Shader "EinsteinTelescope/Lumi/Shell"
             Cull Back
 
             HLSLPROGRAM
-            #pragma target 2.0
+            #pragma target 3.0
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment
             #include_with_pragmas "LumiForwardPass.hlsl"
@@ -56,9 +65,15 @@ Shader "EinsteinTelescope/Lumi/Shell"
             SAMPLER(sampler_EdgeWearMap);
             half4 _MetalColor;
             half _MetalSmoothness;
+            half _MetalMetallic;
             half _WearAmount;
             half _WearSoftness;
             float _NoiseScale;
+            half _ChipBreakup;
+            half _PatchStrength;
+            float _PatchScale;
+            half _SpeckDensity;
+            float _SpeckScale;
 
             float LumiHash(float2 p)
             {
@@ -80,6 +95,23 @@ Shader "EinsteinTelescope/Lumi/Shell"
                 return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
             }
 
+            // At most one speck per grid cell, with a random size and position inside it (0..1 = how much speck).
+            float LumiSpecks(float2 uv)
+            {
+                float2 p = uv * _SpeckScale;
+                float blur = max(0.02, length(fwidth(p))); // measured before the early return: GPUs need it for every pixel
+                float2 cell = floor(p);
+                if (LumiHash(cell) > _SpeckDensity) return 0.0;
+
+                float size = LumiHash(cell + 11.3);
+                float radius = 0.05 + 0.2 * size * size * size; // mostly tiny, a few bigger
+                float2 center = radius + float2(LumiHash(cell + 23.7), LumiHash(cell + 41.1)) * (1.0 - 2.0 * radius);
+                float dist = length(p - cell - center) + (LumiValueNoise(p * 5.0) - 0.5) * 0.14; // not quite round
+
+                // Smaller than a pixel far away: fade out instead of shimmering.
+                return (1.0 - smoothstep(radius - blur, radius + blur, dist)) * saturate(radius / blur);
+            }
+
             void LumiShellSurface(float2 uv, out SurfaceData surfaceData)
             {
                 InitializeStandardLitSurfaceData(uv, surfaceData);
@@ -87,17 +119,20 @@ Shader "EinsteinTelescope/Lumi/Shell"
                 // UV0 is the shared Blender unwrap; the mask covers it exactly once (never tiled).
                 half edge = SAMPLE_TEXTURE2D(_EdgeWearMap, sampler_EdgeWearMap, uv).r;
 
+                // A slow pattern weakens some stretches, so not every edge wears the same.
+                edge *= 1.0 - _PatchStrength * (1.0 - smoothstep(0.3, 0.7, LumiValueNoise(uv * _PatchScale)));
+
                 // Two layers of noise: big chips plus small ragged detail.
                 float2 p = uv * _NoiseScale;
-                half noise = 0.65 * LumiValueNoise(p) + 0.35 * LumiValueNoise(p * 2.7 + 17.0);
+                half noise = 0.6 * LumiValueNoise(p) + 0.4 * LumiValueNoise(p * 2.7 + 17.0);
 
-                // Worn where (edge x noise) is above a threshold. Wear Amount 0 = no metal anywhere,
-                // 1 = metal everywhere the mask is white.
-                half threshold = lerp(1.0 + _WearSoftness, -_WearSoftness, _WearAmount);
-                half wear = smoothstep(threshold - _WearSoftness, threshold + _WearSoftness, edge * noise);
+                // Worn where the mask, roughened by the noise, rises above the threshold.
+                half threshold = 1.0 - _WearAmount;
+                half wear = smoothstep(threshold - _WearSoftness, threshold + _WearSoftness, edge + (noise - 0.5) * _ChipBreakup);
+                wear = max(wear, LumiSpecks(uv));
 
                 surfaceData.albedo = lerp(surfaceData.albedo, _MetalColor.rgb, wear);
-                surfaceData.metallic = lerp(surfaceData.metallic, 1.0, wear);
+                surfaceData.metallic = lerp(surfaceData.metallic, _MetalMetallic, wear);
                 surfaceData.smoothness = lerp(surfaceData.smoothness, _MetalSmoothness, wear);
             }
 

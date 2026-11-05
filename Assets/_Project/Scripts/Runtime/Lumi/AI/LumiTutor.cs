@@ -60,11 +60,11 @@ namespace EinsteinTelescope.Lumi
         /// <summary>"DeepSeek" or "Offline": who will answer the next question.</summary>
         public string BrainName => (online ?? offline).Name;
 
-        /// <summary>The last question and answer (for the debug window).</summary>
+        /// <summary>The last question and answer.</summary>
         public string LastQuestion { get; private set; } = string.Empty;
         public string LastReply { get; private set; } = string.Empty;
 
-        /// <summary>Why the last answer came from the offline brain, if it did (for the debug window).</summary>
+        /// <summary>Why the last answer came from the offline brain, if it did.</summary>
         public string LastProblem { get; private set; } = string.Empty;
 
         private void Awake()

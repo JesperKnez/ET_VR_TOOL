@@ -5,8 +5,8 @@ using UnityEngine;
 namespace EinsteinTelescope.Lumi
 {
     /// <summary>
-    /// Lumi's voice: turns the tutor's answers into speech (Azure AI Speech) and plays them as 3D sound
-    /// from Lumi's head, so in VR the voice comes from where Lumi is.
+    /// Lumi's voice: turns the tutor's answers into speech (Azure AI Speech or ElevenLabs, chosen in the
+    /// voice config) and plays them as 3D sound from Lumi's head, so in VR the voice comes from where Lumi is.
     ///
     /// LumiTutor uses it automatically when it is on the same object: the audio is prepared while Lumi
     /// still "thinks", and the Talk pose lasts exactly as long as the speech. If the voice service fails
@@ -17,7 +17,7 @@ namespace EinsteinTelescope.Lumi
     [DisallowMultipleComponent]
     public class LumiVoice : MonoBehaviour
     {
-        [Tooltip("Azure key, region and voice (keep it in the git-ignored secrets folder). Empty = silent.")]
+        [Tooltip("Provider, keys and voices (keep it in the git-ignored secrets folder). Empty = silent.")]
         [SerializeField] private LumiVoiceConfig config;
 
         [Header("Sound")]
@@ -34,7 +34,7 @@ namespace EinsteinTelescope.Lumi
         /// <summary>True if a voice service is configured.</summary>
         public bool IsAvailable => tts != null;
 
-        /// <summary>Why the last line couldn't be spoken, if it couldn't (for the debug window).</summary>
+        /// <summary>Why the last line couldn't be spoken, if it couldn't.</summary>
         public string LastProblem { get; private set; } = string.Empty;
 
         /// <summary>How loud Lumi is speaking right now, 0..1 (for lip sync later).</summary>
@@ -45,7 +45,8 @@ namespace EinsteinTelescope.Lumi
 
         private void Awake()
         {
-            tts = config != null && config.HasKey ? new AzureTextToSpeech(config) : null;
+            tts = CreateTextToSpeech();
+            if (config != null && tts == null) Debug.LogWarning($"[Lumi] No {config.Provider} key in the voice config, so Lumi stays silent.", this);
 
             // The voice comes from the head (it follows nods and turns); falls back to Lumi itself.
             Transform head = null;
@@ -66,6 +67,14 @@ namespace EinsteinTelescope.Lumi
             source.volume = volume;
         }
 
+        private ILumiTextToSpeech CreateTextToSpeech()
+        {
+            if (config == null || !config.HasKey) return null;
+            return config.Provider == LumiVoiceProvider.ElevenLabs
+                ? new ElevenLabsTextToSpeech(config)
+                : new AzureTextToSpeech(config);
+        }
+
         /// <summary>
         /// Turns text into audio, ready to play. Returns null (and sets <see cref="LastProblem"/>)
         /// when the voice service is missing or fails, so callers can carry on silently.
@@ -75,7 +84,7 @@ namespace EinsteinTelescope.Lumi
             LastProblem = string.Empty;
             if (tts == null)
             {
-                LastProblem = "no voice config with an Azure key";
+                LastProblem = "no voice config with a key for its provider";
                 return null;
             }
             try

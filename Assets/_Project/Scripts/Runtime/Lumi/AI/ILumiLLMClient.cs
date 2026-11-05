@@ -10,7 +10,7 @@ namespace EinsteinTelescope.Lumi
     /// </summary>
     public interface ILumiLLMClient
     {
-        /// <summary>Short name for logs and the debug window, e.g. "DeepSeek" or "Offline".</summary>
+        /// <summary>Short name for logs, e.g. "DeepSeek" or "Offline".</summary>
         string Name { get; }
 
         /// <summary>

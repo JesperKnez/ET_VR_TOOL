@@ -1,0 +1,296 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &3250037373100167671
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.8455572
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.53388476
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -64.537
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_Name
+      value: Lumi
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: ff067f75fee7740cb88ba95f99898f81, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1867057932584175442}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7705612552484766324}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 497406635639572714}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3958040523924998825}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8420585346152453355}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5635309461862616244}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1884266870310644895}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5879541357377497245}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 625909731024694219}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1781486992388272049}
+  m_SourcePrefab: {fileID: 100100000, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+--- !u!1 &2439572299010813094 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+  m_PrefabInstance: {fileID: 3250037373100167671}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1867057932584175442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a081380fde5d421fade235505702a88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiLookAt
+  target: {fileID: 0}
+  head: {fileID: 0}
+  eye: {fileID: 0}
+  maxHeadYaw: 40
+  maxHeadUp: 25
+  maxHeadDown: 20
+  headSmoothTime: 0.25
+  turnBody: 1
+  startTurningAt: 35
+  stopTurningAt: 5
+  maxTurnSpeed: 90
+  turnSmoothTime: 0.5
+  weight: 1
+--- !u!114 &7705612552484766324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 560b34170122e4e4aa62847ab346c8d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiBeads
+  beadMaterial: {fileID: 2100000, guid: 1ce4c86f420d546f2a371fee904021a5, type: 2}
+  glowScale: 1.8
+  pulse: 0.12
+  pulseSpeed: 0.7
+  armArcUp: 0.05
+  armArcOut: 0.03
+  tailLag: 0.08
+  tailBob: 0.004
+--- !u!114 &497406635639572714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfe2d059a2dfa44fdaad9a22b2825405, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiBlink
+  iris: {fileID: 0}
+  autoBlink: 1
+  blinkInterval: {x: 2.5, y: 6}
+  doubleBlinkChance: 0.2
+  closeTime: 0.06
+  holdTime: 0.04
+  openTime: 0.1
+  followMood: 1
+  idleAperture: 0
+  listenAperture: 0.3
+  thinkAperture: -0.4
+  talkAperture: 0
+  excitedAperture: 0.8
+  apertureSmoothTime: 0.2
+--- !u!114 &3958040523924998825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fa5d42dce49744e596e5b5769cddb51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiLaserReactions
+  waveOnLevelStart: 1
+  lookAtSelectedMirror: 1
+  mirrorLookSeconds: 2.5
+  listenWhileHolding: 1
+  celebrateOnComplete: 1
+  puzzledOnWarning: 1
+  puzzledCooldown: 8
+  searchSeconds: 10
+--- !u!114 &8420585346152453355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c98eab93d106947f79bb72c8069f6a93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiTutor
+  config: {fileID: 11400000, guid: a6d8d69991e7d419f9b35d9467d6f8a8, type: 2}
+  wordsPerSecond: 2.5
+  pointSeconds: 2.5
+  onQuestion:
+    m_PersistentCalls:
+      m_Calls: []
+  onReply:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &5635309461862616244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66a9e46d3ab86471ba88b9857681b8e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiTutorDebugWindow
+--- !u!114 &1884266870310644895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a9505820ba17422e8fee46ef8fe41bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiVoice
+  config: {fileID: 11400000, guid: b866377df24594a13ba375df9dfbbbf6, type: 2}
+  volume: 1
+  fullVolumeDistance: 1.5
+  maxDistance: 12
+--- !u!114 &5879541357377497245
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cee54bb5f51a94e4faab1bb4ffdd5477, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiMouth
+  head: {fileID: 0}
+  talkThresholds: {x: 0.08, y: 0.25, z: 0.5}
+  minFrameTime: 0.06
+  silentTalkRate: 7
+  idleSmileInterval: {x: 8, y: 16}
+  idleSmileSeconds: 1.5
+--- !u!114 &625909731024694219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ecd771ec5c654dd9aee98e9fc93e2cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiListener
+  modelFile: ggml-tiny.en.bin
+  vocabularyHint: Lumi, laser, beam, mirror, lens, light, photon, reflection, interference, detector, Einstein Telescope, gravitational waves.
+  maxSeconds: 15
+  tailSeconds: 0.2
+  minSeconds: 0.3
+  silenceLevel: 0.002
+  testKey: 55
+--- !u!114 &1781486992388272049
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439572299010813094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c28054971726940b3bf5d0d96c96a085, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiSubtitles
+  heightAboveLumi: 0.68
+  width: 0.7
+  referenceDistance: 1.5
+  scaleLimits: {x: 0.7, y: 2.5}
+  fontSize: 34
+  answerColor: {r: 1, g: 1, b: 1, a: 1}
+  questionColor: {r: 0.65, g: 0.75, b: 0.8, a: 1}
+  backgroundColor: {r: 0.03, g: 0.08, b: 0.12, a: 0.85}
+  lingerSeconds: 1.5
