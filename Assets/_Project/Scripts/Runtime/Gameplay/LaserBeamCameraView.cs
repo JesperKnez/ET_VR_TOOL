@@ -102,7 +102,8 @@ namespace EinsteinTelescope.Laser
                 Vector2 position = offsetMeters * scale;
                 bool offView = position.magnitude > viewRadius;
                 position = Vector2.ClampMagnitude(position, viewRadius * 0.88f);   // keep the glow inside the round view
-                float size = Mathf.Clamp(beamRadius * scale, viewRadius * 0.06f, viewRadius * 0.6f);
+                // A small dot, not the physical beam size: a big blob hides how far off centre you are and in which direction.
+                float size = Mathf.Clamp(beamRadius * scale * 0.25f, viewRadius * 0.05f, viewRadius * 0.12f);
                 float brightness = Mathf.Lerp(0.45f, 1f, Mathf.Clamp01(powerFraction * 2f));
 
                 if (spot != null)
@@ -131,6 +132,16 @@ namespace EinsteinTelescope.Laser
             }
 
             string word = state == ViewState.Centred ? "CENTRED" : state == ViewState.OffCentre ? "OFF CENTRE" : state == ViewState.Blocked ? "BLOCKED BY IRIS" : "NO BEAM";
+
+            // Inside the goal circle but still not aligned: the detector wants something else (a second beam, or more power).
+            // "OFF CENTRE" would be wrong then, because the beam on screen is already centred.
+            if (state == ViewState.OffCentre && target != null && target.WorstBeamOffset <= target.CenteringTolerance)
+            {
+                int missing = target.RequiredBeamCount - target.BeamCount;
+                word = missing > 0 ? (missing == 1 ? "WAITING FOR 2ND BEAM" : "WAITING FOR " + missing + " MORE BEAMS")
+                    : target.ReceivedPowerFraction < target.RequiredPowerFraction ? "NOT ENOUGH POWER"
+                    : "CENTRED, HOLD STEADY";
+            }
             if (target != null && target.Type == LaserTarget.TargetType.Photodiode && state == ViewState.Blocked)
             {
                 word = "OFF THE SENSOR";

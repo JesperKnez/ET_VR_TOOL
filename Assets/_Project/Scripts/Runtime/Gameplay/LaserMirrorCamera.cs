@@ -27,8 +27,89 @@ namespace EinsteinTelescope.Laser
         [SerializeField, Range(5f, 90f)] private float fieldOfView = 16f;
         [Tooltip("Distance in front of the mirror where the camera starts drawing (skips the mirror's own frame).")]
         [SerializeField, Min(0.01f)] private float nearClip = 0.3f;
+        [Tooltip("Width of the laser lines in this picture, in pixels. Constant, so the lines do not jump when the player moves.")]
+        [SerializeField, Range(1f, 8f)] private float beamWidthPixels = 3f;
         [Tooltip("Render every Nth frame (2 = half the frame rate). Saves performance on standalone headsets.")]
         [SerializeField, Range(1, 6)] private int renderEveryNthFrame = 2;
+
+        public enum ViewMode
+        {
+            /// <summary>Camera circles the mirror at a fixed distance, so you see the tower, the mirror and both beams.</summary>
+            Orbit,
+            /// <summary>From the mirror surface along the reflected beam.</summary>
+            AlongBeam
+        }
+
+        [System.Serializable]
+        public struct ViewPreset
+        {
+            public string name;
+            public ViewMode mode;
+            [Tooltip("Orbit: distance from the mirror (m). Larger than the tank radius = filmed from outside.")]
+            public float distance;
+            [Tooltip("Orbit: angle above the horizon (degrees). 90 = straight from above, 0 = from the side.")]
+            [Range(0f, 90f)] public float elevation;
+            [Tooltip("Orbit: angle around the mirror (degrees). 0 = straight in front of the coated face, 90 = side, 180 = behind.")]
+            [Range(-180f, 180f)] public float sideAngle;
+            [Range(5f, 90f)] public float fieldOfView;
+
+            public ViewPreset(string name, ViewMode mode, float distance, float elevation, float sideAngle, float fieldOfView)
+            {
+                this.name = name;
+                this.mode = mode;
+                this.distance = distance;
+                this.elevation = elevation;
+                this.sideAngle = sideAngle;
+                this.fieldOfView = fieldOfView;
+            }
+        }
+
+        [Header("Views (the VIEW button on the screen cycles through these)")]
+        [SerializeField] private ViewPreset[] views = DefaultViews();
+
+        private static ViewPreset[] DefaultViews() => new[]
+        {
+            new ViewPreset("Along beam", ViewMode.AlongBeam, 0f, 0f, 0f, 16f),
+            new ViewPreset("Overview", ViewMode.Orbit, 5f, 40f, 30f, 35f),
+            new ViewPreset("Top", ViewMode.Orbit, 5f, 80f, 0f, 35f)
+        };
+
+        [Header("Goal ring (Along beam view)")]
+        [Tooltip("Zoom in automatically on the goal so a small error stays visible: the picture is always about 1.6x the current error high.")]
+        [SerializeField] private bool autoZoom = true;
+        [Tooltip("Smallest picture height (in multiples of the goal tolerance) the auto zoom goes to.")]
+        [SerializeField, Min(2f)] private float minFieldInTolerances = 8f;
+        [SerializeField] private Color goalColor = new Color(1f, 0.7f, 0.15f, 1f);
+        [SerializeField] private Color goalReachedColor = new Color(0.25f, 1f, 0.4f, 1f);
+
+        [SerializeField] private Color beamColor = new Color(0.25f, 0.8f, 1f, 1f);
+
+        private const int RingPoints = 48;
+        private LineRenderer m_Ring;
+        private LineRenderer m_BeamLine;
+        private LineRenderer m_Dot;
+        private Material m_RingMaterial;
+        private Material m_BeamMaterial;
+        private float m_ZoomFov;
+        private int m_HintKey = int.MinValue;
+
+        [ContextMenu("Reset views to defaults")]
+        private void ResetViews()
+        {
+            views = DefaultViews();
+            m_ViewIndex = 0;
+        }
+
+        private GameObject[] m_Crosshair = new GameObject[0];
+
+        [Tooltip("Optional: shows the name of the current view (e.g. on the VIEW button).")]
+        [SerializeField] private Text viewLabel = null;
+
+        private int m_ViewIndex;
+
+        [Header("Hidden in the feed (optional)")]
+        [Tooltip("Renderers hidden for this camera only, e.g. a tank wall that blocks the view. Empty = nothing hidden.")]
+        [SerializeField] private Renderer[] hideInFeed = new Renderer[0];
 
         private RenderTexture m_Texture;
         private MirrorMount m_ShownMirror;
@@ -51,14 +132,252 @@ namespace EinsteinTelescope.Laser
                 feedCamera.targetTexture = m_Texture;
                 feedCamera.fieldOfView = fieldOfView;
                 feedCamera.nearClipPlane = nearClip;
-                feedCamera.farClipPlane = 30f;
+                feedCamera.farClipPlane = 80f;   // the unfolded goal can lie far behind the first optic
                 feedCamera.enabled = false;
             }
 
             if (feedImage != null)
             {
                 feedImage.texture = m_Texture;
+
+                // The crosshair only means something when looking along the beam (the beam leaves from the centre).
+                var found = new System.Collections.Generic.List<GameObject>();
+                foreach (Transform child in feedImage.transform.parent)
+                {
+                    if (child.name.StartsWith("Crosshair"))
+                    {
+                        found.Add(child.gameObject);
+                    }
+                }
+
+                m_Crosshair = found.ToArray();
             }
+
+            CreateRing();
+            UpdateViewLabel();
+        }
+
+        private void CreateRing()
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null)
+            {
+                shader = Shader.Find("Sprites/Default");
+            }
+
+            m_RingMaterial = new Material(shader) { name = "Goal Ring" };
+            m_BeamMaterial = new Material(shader) { name = "Goal Beam" };
+            m_Ring = CreateOverlayLine("Goal Ring", RingPoints, true, 0, m_RingMaterial);
+            m_BeamLine = CreateOverlayLine("Goal Beam", 2, false, 0, m_BeamMaterial);
+            m_Dot = CreateOverlayLine("Goal Dot", 2, false, 8, m_BeamMaterial);   // a short line with round caps = a dot
+        }
+
+        private LineRenderer CreateOverlayLine(string objectName, int points, bool loop, int caps, Material material)
+        {
+            var lineObject = new GameObject(objectName);
+            lineObject.transform.SetParent(transform, false);
+            var line = lineObject.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.loop = loop;
+            line.positionCount = points;
+            line.numCapVertices = caps;
+            line.alignment = LineAlignment.View;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.allowOcclusionWhenDynamic = false;
+            line.sharedMaterial = material;
+            line.forceRenderingOff = true;   // only the mirror camera sees it, see HandleBeginCamera
+            line.enabled = false;
+            return line;
+        }
+
+        private void OnEnable()
+        {
+            // Along beam: the camera sits inside the tank and the line of sight runs through its wall and pipes. The tower
+            // (one mesh) is made very faint in that view (see GhostTower), so you still see it, but the beam stays visible.
+            var tower = new System.Collections.Generic.List<Renderer>();
+            foreach (TowerTransparency t in FindObjectsByType<TowerTransparency>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                tower.AddRange(t.GetComponentsInChildren<Renderer>(true));
+            }
+
+            m_TowerRenderers = tower.ToArray();
+
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering += HandleBeginCamera;
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering += HandleEndCamera;
+        }
+
+        private void OnDisable()
+        {
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering -= HandleBeginCamera;
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering -= HandleEndCamera;
+        }
+
+        private void HandleBeginCamera(UnityEngine.Rendering.ScriptableRenderContext context, Camera camera) => SetShellHidden(camera, true);
+
+        private void HandleEndCamera(UnityEngine.Rendering.ScriptableRenderContext context, Camera camera) => SetShellHidden(camera, false);
+
+        private void SetShellHidden(Camera camera, bool hidden)
+        {
+            if (camera != feedCamera)
+            {
+                return;
+            }
+
+            // "hidden" is true at the start of this camera's render: the overlay is shown only then
+            if (m_Ring != null) m_Ring.forceRenderingOff = !hidden;
+            if (m_BeamLine != null) m_BeamLine.forceRenderingOff = !hidden;
+            if (m_Dot != null) m_Dot.forceRenderingOff = !hidden;
+
+            if (CurrentView.mode == ViewMode.AlongBeam)
+            {
+                GhostTower(hidden);
+            }
+
+            if (hidden)
+            {
+                SetBeamWidthsForFeed();
+            }
+            else
+            {
+                RestoreBeamWidths();
+            }
+
+            for (int i = 0; i < hideInFeed.Length; i++)
+            {
+                if (hideInFeed[i] != null)
+                {
+                    hideInFeed[i].forceRenderingOff = hidden;
+                }
+            }
+        }
+
+        // The beam lines are widened every frame so they stay visible from the player's eye (LaserBeamMinWidth). That
+        // width changes whenever the player moves their head, so in this picture the lines would jump. While the mirror
+        // camera renders, the lines get a constant width in pixels of this picture instead, and are restored afterwards.
+        [Header("Tower in the Along beam view")]
+        [Tooltip("The tower stays visible, but very faint, so the wall in front of the camera does not hide the beam. Only for this camera, and only for the see-through (alpha blended) parts.")]
+        [SerializeField, Range(0.01f, 1f)] private float towerAlphaInFeed = 0.05f;
+
+        private static readonly int s_BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int s_SurfaceId = Shader.PropertyToID("_Surface");
+        private MaterialPropertyBlock m_GhostBlock;
+        private MaterialPropertyBlock m_ColorBlock;   // not created here: a MaterialPropertyBlock cannot be made in a field initializer
+
+        [Tooltip("Along beam view: only draw the beam you are steering (the highlight colour), not the beam coming in or the other arm.")]
+        [SerializeField] private bool hideOtherBeams = true;
+
+        /// <summary>The tower's see-through materials get a lower alpha while this camera renders (and back afterwards).</summary>
+        private void GhostTower(bool on)
+        {
+            if (m_GhostBlock == null)
+            {
+                m_GhostBlock = new MaterialPropertyBlock();
+            }
+
+            for (int r = 0; r < m_TowerRenderers.Length; r++)
+            {
+                Renderer renderer = m_TowerRenderers[r];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                renderer.GetSharedMaterials(m_GhostMaterials);
+                for (int i = 0; i < m_GhostMaterials.Count; i++)
+                {
+                    Material material = m_GhostMaterials[i];
+                    if (material == null || !material.HasProperty(s_SurfaceId) || !material.HasProperty(s_BaseColorId) || material.GetFloat(s_SurfaceId) < 0.5f)
+                    {
+                        continue;   // opaque material: nothing to fade
+                    }
+
+                    if (on)
+                    {
+                        Color color = material.GetColor(s_BaseColorId);
+                        color.a = Mathf.Min(color.a, towerAlphaInFeed);
+                        m_GhostBlock.Clear();
+                        m_GhostBlock.SetColor(s_BaseColorId, color);
+                        renderer.SetPropertyBlock(m_GhostBlock, i);
+                    }
+                    else
+                    {
+                        renderer.SetPropertyBlock(null, i);
+                    }
+                }
+            }
+        }
+
+        private readonly System.Collections.Generic.List<Material> m_GhostMaterials = new System.Collections.Generic.List<Material>();
+        private readonly System.Collections.Generic.List<LineRenderer> m_BeamLines = new System.Collections.Generic.List<LineRenderer>();
+        private readonly System.Collections.Generic.List<LineRenderer> m_LinesInEmitter = new System.Collections.Generic.List<LineRenderer>();
+        private readonly System.Collections.Generic.List<Vector2> m_SavedWidths = new System.Collections.Generic.List<Vector2>();
+
+        private void SetBeamWidthsForFeed()
+        {
+            m_BeamLines.Clear();
+            m_SavedWidths.Clear();
+            float worldPerPixelPerMetre = 2f * Mathf.Tan(feedCamera.fieldOfView * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1, m_Texture != null ? m_Texture.height : resolution.y);
+            Vector3 from = feedCamera.transform.position;
+            var emitters = LaserEmitter.ActiveEmitters;
+            for (int e = 0; e < emitters.Count; e++)
+            {
+                emitters[e].GetComponentsInChildren(false, m_LinesInEmitter);
+                for (int i = 0; i < m_LinesInEmitter.Count; i++)
+                {
+                    LineRenderer line = m_LinesInEmitter[i];
+                    if (!line.enabled || line.positionCount < 2)
+                    {
+                        continue;
+                    }
+
+                    m_BeamLines.Add(line);
+                    m_SavedWidths.Add(new Vector2(line.startWidth, line.endWidth));
+
+                    // Looking along the beam, only the beam you are steering matters: the light from the selected mirror
+                    // (drawn in the highlight colour). The green lines are the beam coming in and the other arm. For an end
+                    // mirror they run along the same path, so showing both looks like two lasers.
+                    if (CurrentView.mode == ViewMode.AlongBeam && m_GoalValid)
+                    {
+                        // The unfolded beam line, dot and ring (see UpdateGoal) replace the real lines in this view
+                        line.forceRenderingOff = true;
+                    }
+                    else if (hideOtherBeams && CurrentView.mode == ViewMode.AlongBeam && LaserBeamHighlight.SelectedOptic != null)
+                    {
+                        if (m_ColorBlock == null)
+                        {
+                            m_ColorBlock = new MaterialPropertyBlock();
+                        }
+
+                        line.GetPropertyBlock(m_ColorBlock);
+                        Color drawn = m_ColorBlock.GetColor(s_BaseColorId);
+                        Color highlight = LaserBeamHighlight.Color;
+                        bool isHighlight = Mathf.Abs(drawn.r - highlight.r) + Mathf.Abs(drawn.g - highlight.g) + Mathf.Abs(drawn.b - highlight.b) < 0.05f;
+                        if (!isHighlight)
+                        {
+                            line.forceRenderingOff = true;
+                        }
+                    }
+                    line.startWidth = Vector3.Distance(from, line.GetPosition(0)) * worldPerPixelPerMetre * beamWidthPixels;
+                    line.endWidth = Vector3.Distance(from, line.GetPosition(1)) * worldPerPixelPerMetre * beamWidthPixels;
+                }
+            }
+        }
+
+        private void RestoreBeamWidths()
+        {
+            for (int i = 0; i < m_BeamLines.Count; i++)
+            {
+                if (m_BeamLines[i] != null)
+                {
+                    m_BeamLines[i].forceRenderingOff = false;
+                    m_BeamLines[i].startWidth = m_SavedWidths[i].x;
+                    m_BeamLines[i].endWidth = m_SavedWidths[i].y;
+                }
+            }
+
+            m_BeamLines.Clear();
+            m_SavedWidths.Clear();
         }
 
         private void OnDestroy()
@@ -67,6 +386,16 @@ namespace EinsteinTelescope.Laser
             {
                 m_Texture.Release();
                 Destroy(m_Texture);
+            }
+
+            if (m_RingMaterial != null)
+            {
+                Destroy(m_RingMaterial);
+            }
+
+            if (m_BeamMaterial != null)
+            {
+                Destroy(m_BeamMaterial);
             }
         }
 
@@ -86,22 +415,429 @@ namespace EinsteinTelescope.Laser
             Transform surface = coating != null ? coating.Surface : optic != null ? optic.transform : mirror.transform;
             Vector3 normal = surface.forward;
 
-            if (TryFindIncomingBeam(optic, out Vector3 hitPoint, out Vector3 incoming) && Vector3.Dot(incoming, normal) < 0f)
+            Vector3 centre = optic != null ? optic.transform.position : surface.position;
+            bool hasBeam = TryFindIncomingBeam(optic, out Vector3 hitPoint, out Vector3 incoming) && Vector3.Dot(incoming, normal) < 0f;
+            FollowsBeam = hasBeam;
+
+            ViewPreset view = CurrentView;
+            bool showCrosshair = view.mode == ViewMode.AlongBeam;
+            for (int i = 0; i < m_Crosshair.Length; i++)
             {
-                Vector3 outgoing = LaserOptics.Reflect(incoming, normal);
-                Place(hitPoint + outgoing * 0.01f, outgoing);
-                FollowsBeam = true;
+                if (m_Crosshair[i] != null && m_Crosshair[i].activeSelf != showCrosshair)
+                {
+                    m_Crosshair[i].SetActive(showCrosshair);
+                }
+            }
+
+            feedCamera.fieldOfView = view.fieldOfView > 0f ? view.fieldOfView : fieldOfView;
+            if (view.mode == ViewMode.Orbit)
+            {
+                PlaceOrbit(centre, normal, view);
             }
             else
             {
-                Vector3 centre = optic != null ? optic.transform.position : surface.position;
-                Place(centre + normal * 0.2f, normal);   // just in front of the coated face
-                FollowsBeam = false;
+                if (hasBeam)
+                {
+                    Vector3 outgoing = LaserOptics.Reflect(incoming, normal);
+                    PlaceChase(hitPoint + outgoing * 0.01f, outgoing);
+                }
+                else
+                {
+                    PlaceChase(centre + normal * 0.2f, normal);   // just in front of the coated face
+                }
             }
 
             int frame = Time.frameCount;
             SetCamera(renderEveryNthFrame <= 1 || frame % renderEveryNthFrame == 0);
             UpdateTexts(mirror, FollowsBeam);
+
+            if (view.mode == ViewMode.AlongBeam)
+            {
+                UpdateGoal();
+            }
+            else if (m_Ring != null)
+            {
+                SetOverlay(false);
+                m_ZoomFov = 0f;
+            }
+        }
+
+        // ----- Goal ring: where the beam must go --------------------------------------------------------
+        //
+        // The beam leaves the mirror, bounces off other optics and ends on an iris or the detector. To show all of that in
+        // one straight picture, the path is "unfolded": every optic after the mirror is mirrored away, so the beam becomes
+        // one straight line and the target ends up at a fixed point G in front of the camera. The beam's landing point L
+        // lies on that same straight line. G does not move when you tilt the mirror (only the beam does), and L - G is
+        // exactly the offset the detector screen shows. So: the ring (G) stays put, the beam and its dot (L) move.
+
+        private readonly System.Collections.Generic.List<LaserSegment> m_Segments = new System.Collections.Generic.List<LaserSegment>();
+        private readonly System.Collections.Generic.List<int> m_Path = new System.Collections.Generic.List<int>();
+        private readonly System.Collections.Generic.List<int> m_BestPath = new System.Collections.Generic.List<int>();
+        private float m_SmoothedError = -1f;
+        private Renderer[] m_TowerRenderers = new Renderer[0];
+        private LaserTarget[] m_Targets = new LaserTarget[0];
+        private float m_TargetsTime = float.NegativeInfinity;
+
+        private Vector3 m_BeamOrigin;
+        private bool m_GoalValid;
+        private Vector3 m_GoalCentre;     // G: centre of the target, unfolded
+        private Vector3 m_Landing;        // L: where the beam lands, unfolded
+        private float m_GoalTolerance;
+        private bool m_GoalReached;       // the path really ends on the target (false = guessed from the direction the beam heads)
+
+        [Header("Chase camera (Along beam view)")]
+        [Tooltip("How far the camera sits beside the beam, as a fraction of the distance to the goal. 0 = exactly on the beam (the beam is then seen end-on, as a dot).")]
+        [SerializeField, Range(0f, 0.3f)] private float chaseOffset = 0.08f;
+
+        /// <summary>
+        /// The camera sits a little beside the beam, close to the mirror, and looks at the (fixed) goal. Without a path
+        /// to a target it looks along the beam instead.
+        /// </summary>
+        private void PlaceChase(Vector3 beamOrigin, Vector3 beamDirection)
+        {
+            m_BeamOrigin = beamOrigin;
+            m_GoalValid = TryTrace(beamOrigin, beamDirection, out m_GoalCentre, out m_Landing, out m_GoalTolerance, out m_GoalReached);
+
+            Vector3 aim = m_GoalValid ? m_GoalCentre : beamOrigin + beamDirection * 3f;
+            Vector3 toAim = aim - beamOrigin;
+            float length = Mathf.Max(toAim.magnitude, 0.5f);
+            Vector3 axis = toAim.sqrMagnitude > 1e-6f ? toAim / toAim.magnitude : beamDirection;
+
+            Vector3 up = Mathf.Abs(Vector3.Dot(axis, Vector3.up)) > 0.98f ? Vector3.forward : Vector3.up;
+            Vector3 sideways = Vector3.Cross(axis, up).normalized;
+            Vector3 above = Vector3.Cross(sideways, axis).normalized;
+            Vector3 position = beamOrigin + (above + sideways).normalized * Mathf.Max(0.08f, chaseOffset * length);
+            Place(position, aim - position);
+        }
+
+        /// <summary>
+        /// Draws the ring (goal, fixed in the middle of the picture), the beam line and its dot (where the beam lands).
+        /// Dot in the ring = the detector screen says centred. The zoom follows the error, so a few millimetres stay visible.
+        /// </summary>
+        private void UpdateGoal()
+        {
+            if (!m_GoalValid)
+            {
+                SetOverlay(false);
+                m_ZoomFov = 0f;
+                m_SmoothedError = -1f;
+                SetHint(-2, "none");
+                return;
+            }
+
+            Vector3 cameraPosition = feedCamera.transform.position;
+            Vector3 toGoal = m_GoalCentre - cameraPosition;
+            float distance = Mathf.Max(toGoal.magnitude, 0.5f);
+            Vector3 axis = toGoal / Mathf.Max(toGoal.magnitude, 1e-4f);
+
+            // Where the beam lands, relative to the goal, in the plane of the goal facing the camera
+            Vector3 offset = m_Landing - m_GoalCentre;
+            offset -= axis * Vector3.Dot(offset, axis);
+            float errorLength = offset.magnitude;
+            float tolerance = m_GoalTolerance;
+
+            // Smoothed, so the zoom does not pump when the suspension swings
+            m_SmoothedError = m_SmoothedError < 0f ? errorLength : Mathf.Lerp(m_SmoothedError, errorLength, 1f - Mathf.Exp(-4f * Time.unscaledDeltaTime));
+            float half = Mathf.Max(m_SmoothedError * 1.6f, tolerance * minFieldInTolerances * 0.5f);
+            if (autoZoom)
+            {
+                float target = Mathf.Clamp(2f * Mathf.Atan(half / distance) * Mathf.Rad2Deg, 0.2f, 40f);
+                m_ZoomFov = m_ZoomFov <= 0f ? target : Mathf.Lerp(m_ZoomFov, target, 1f - Mathf.Exp(-4f * Time.unscaledDeltaTime));
+                feedCamera.fieldOfView = m_ZoomFov;
+            }
+
+            float fieldHeight = 2f * distance * Mathf.Tan(feedCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float pixel = fieldHeight / Mathf.Max(1, m_Texture != null ? m_Texture.height : resolution.y);
+            Quaternion facing = feedCamera.transform.rotation;
+
+            // Ring: the target's tolerance, fixed at the goal
+            for (int i = 0; i < RingPoints; i++)
+            {
+                float angle = i * Mathf.PI * 2f / RingPoints;
+                m_Ring.SetPosition(i, m_GoalCentre + facing * new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * tolerance);
+            }
+
+            m_Ring.widthMultiplier = Mathf.Max(pixel * 3f, tolerance * 0.12f);
+            Color ringColor = errorLength <= tolerance ? goalReachedColor : goalColor;
+            SetColor(m_RingMaterial, ringColor);
+
+            // Beam: from the mirror to where it lands. The dot marks the landing point.
+            Vector3 landing = m_GoalCentre + offset;
+            m_BeamLine.SetPosition(0, m_BeamOrigin);
+            m_BeamLine.SetPosition(1, landing);
+            m_BeamLine.widthMultiplier = Mathf.Max(pixel * beamWidthPixels, 0.0002f);
+            Vector3 right = facing * Vector3.right;
+            float dotSize = Mathf.Max(pixel * 7f, tolerance * 0.25f);
+            m_Dot.SetPosition(0, landing - right * dotSize * 0.05f);
+            m_Dot.SetPosition(1, landing + right * dotSize * 0.05f);
+            m_Dot.widthMultiplier = dotSize;
+            SetColor(m_BeamMaterial, beamColor);
+
+            SetOverlay(true);
+
+            float cm = fieldHeight * 100f;
+            SetHint(Mathf.RoundToInt(cm * 10f) + (m_GoalReached ? 0 : 1), cm < 10f ? cm.ToString("0.0") : Mathf.RoundToInt(cm).ToString());
+        }
+
+        private static void SetColor(Material material, Color color)
+        {
+            material.color = color;
+            material.SetColor("_BaseColor", color);
+        }
+
+        private void SetOverlay(bool on)
+        {
+            m_Ring.enabled = on;
+            m_BeamLine.enabled = on;
+            m_Dot.enabled = on;
+        }
+
+        private void SetHint(int key, string heightCm)
+        {
+            if (hintText == null || key == m_HintKey)
+            {
+                return;
+            }
+
+            m_HintKey = key;
+            hintText.text = heightCm == "none"
+                ? "No beam path to an iris or detector yet. Steer the mirrors before it first."
+                : (m_GoalReached ? "Dot = where the beam lands. Ring = goal." : "Beam misses the goal: steer the dot towards the ring.") + " Picture " + heightCm + " cm high.";
+        }
+
+        /// <summary>
+        /// Follows the beam that leaves the mirror, through the optics after it, to the iris or detector it ends on, and
+        /// unfolds that path (see above). <paramref name="goal"/> and <paramref name="landing"/> are in the unfolded space.
+        /// When the beam does not reach a target, the target the beam heads for (smallest angle) is used instead.
+        /// </summary>
+        private bool TryTrace(Vector3 origin, Vector3 direction, out Vector3 goal, out Vector3 landing, out float tolerance, out bool reached)
+        {
+            goal = landing = Vector3.zero;
+            tolerance = 0.01f;
+            reached = false;
+
+            m_Segments.Clear();
+            var emitters = LaserEmitter.ActiveEmitters;
+            for (int e = 0; e < emitters.Count; e++)
+            {
+                var segments = emitters[e].Segments;
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    if ((segments[i].End - segments[i].Start).sqrMagnitude > 1e-8f)
+                    {
+                        m_Segments.Add(segments[i]);
+                    }
+                }
+            }
+
+            // The first piece: starts at the mirror, goes along the given direction
+            int first = -1;
+            float best = 0f;
+            for (int i = 0; i < m_Segments.Count; i++)
+            {
+                LaserSegment s = m_Segments[i];
+                if (s.Power > best && (s.Start - origin).sqrMagnitude < 0.0025f && Vector3.Dot(SegmentDirection(s), direction) > 0.99f)
+                {
+                    best = s.Power;
+                    first = i;
+                }
+            }
+
+            if (first < 0)
+            {
+                return false;
+            }
+
+            m_Path.Clear();
+            m_BestPath.Clear();
+            m_Tried.Clear();
+            m_Path.Add(first);
+            reached = Follow(first, 0, out LaserTarget target);
+            System.Collections.Generic.List<int> path = reached ? m_Path : m_BestPath;
+            LaserSegment last = m_Segments[path[path.Count - 1]];
+            Vector3 lastDirection = SegmentDirection(last);
+
+            Vector3 targetPoint;
+            Vector3 landingPoint;
+            if (reached)
+            {
+                targetPoint = target.Surface.position;
+                landingPoint = last.End;
+                tolerance = target.CenteringTolerance;
+            }
+            else
+            {
+                // The beam ends on something else (a wall, the wrong optic): aim at the target it is heading for
+                if (Time.unscaledTime - m_TargetsTime > 2f)
+                {
+                    m_TargetsTime = Time.unscaledTime;
+                    m_Targets = FindObjectsByType<LaserTarget>(FindObjectsSortMode.None);
+                }
+
+                float bestAngle = 60f;
+                target = null;
+                for (int i = 0; i < m_Targets.Length; i++)
+                {
+                    if (m_Targets[i] == null || !m_Targets[i].isActiveAndEnabled)
+                    {
+                        continue;
+                    }
+
+                    Vector3 to = m_Targets[i].Surface.position - last.Start;
+                    float angle = Vector3.Angle(to, lastDirection);
+                    if (to.magnitude > 0.3f && angle < bestAngle)
+                    {
+                        bestAngle = angle;
+                        target = m_Targets[i];
+                    }
+                }
+
+                if (target == null)
+                {
+                    return false;
+                }
+
+                targetPoint = target.Surface.position;
+                landingPoint = last.Start + lastDirection * Vector3.Dot(targetPoint - last.Start, lastDirection);   // the beam, extended to the target
+                tolerance = target.CenteringTolerance;
+            }
+
+            goal = Unfold(targetPoint, path);
+            landing = Unfold(landingPoint, path);
+            return true;
+        }
+
+        /// <summary>
+        /// Maps a point after the last bounce back into the straight line of the first piece of beam: for every
+        /// junction (last one first) remove the sideways shift of the next piece (glass plates shift the beam) and mirror
+        /// the point in the optic's plane (only where the beam really changes direction).
+        /// </summary>
+        private Vector3 Unfold(Vector3 point, System.Collections.Generic.List<int> path)
+        {
+            for (int k = path.Count - 1; k >= 1; k--)
+            {
+                LaserSegment previous = m_Segments[path[k - 1]];
+                LaserSegment current = m_Segments[path[k]];
+                point -= current.Start - previous.End;
+
+                Vector3 before = SegmentDirection(previous);
+                Vector3 after = SegmentDirection(current);
+                if (Vector3.Angle(before, after) > 0.5f)
+                {
+                    Vector3 normal = (after - before).normalized;
+                    point -= 2f * Vector3.Dot(point - previous.End, normal) * normal;
+                }
+            }
+
+            return point;
+        }
+
+        private static Vector3 SegmentDirection(LaserSegment s) => (s.End - s.Start).normalized;
+
+        /// <summary>Depth-first: the beam pieces that start where this one ends, until one ends on a <see cref="LaserTarget"/>.</summary>
+        private bool Follow(int index, int depth, out LaserTarget target)
+        {
+            LaserSegment segment = m_Segments[index];
+            if (m_Path.Count > m_BestPath.Count)
+            {
+                m_BestPath.Clear();
+                m_BestPath.AddRange(m_Path);   // the farthest the beam got, for when no target is reached
+            }
+
+            target = segment.HitCollider != null ? segment.HitCollider.GetComponentInParent<LaserTarget>() : null;
+            if (target != null)
+            {
+                return true;
+            }
+
+            if (depth >= 8)
+            {
+                return false;
+            }
+
+            // The pieces that continue from here (a beam splitter gives two), nearest start first
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                int next = -1;
+                float nearest = 0.12f;
+                for (int i = 0; i < m_Segments.Count; i++)
+                {
+                    if (m_Path.Contains(i) || m_Segments[i].Power > segment.Power * 1.001f)
+                    {
+                        continue;
+                    }
+
+                    float distance = (m_Segments[i].Start - segment.End).magnitude;
+                    if (distance < nearest && !m_Tried.Contains(depth * 1000 + i))
+                    {
+                        nearest = distance;
+                        next = i;
+                    }
+                }
+
+                if (next < 0)
+                {
+                    return false;
+                }
+
+                m_Tried.Add(depth * 1000 + next);
+                m_Path.Add(next);
+                if (Follow(next, depth + 1, out target))
+                {
+                    return true;
+                }
+
+                m_Path.RemoveAt(m_Path.Count - 1);
+            }
+
+            target = null;
+            return false;
+        }
+
+        private readonly System.Collections.Generic.HashSet<int> m_Tried = new System.Collections.Generic.HashSet<int>();
+
+        /// <summary>Name of the current view, e.g. "Side".</summary>
+        public string CurrentViewName => CurrentView.name;
+
+        private ViewPreset CurrentView => views != null && views.Length > 0
+            ? views[Mathf.Clamp(m_ViewIndex, 0, views.Length - 1)]
+            : new ViewPreset("Overview", ViewMode.Orbit, 5f, 40f, 30f, 35f);
+
+        /// <summary>Next camera view. Hook this to the VIEW button's OnClick.</summary>
+        public void NextView() => StepView(1);
+
+        public void PreviousView() => StepView(-1);
+
+        private void StepView(int step)
+        {
+            if (views == null || views.Length == 0)
+            {
+                return;
+            }
+
+            m_ViewIndex = (m_ViewIndex + step + views.Length) % views.Length;
+            m_ShownMirror = null;   // forces the texts to refresh
+            UpdateViewLabel();
+        }
+
+        private void UpdateViewLabel()
+        {
+            if (viewLabel != null)
+            {
+                viewLabel.text = "VIEW: " + CurrentView.name.ToUpperInvariant();
+            }
+        }
+
+        /// <summary>Camera at the given distance, height and angle around the mirror, looking at its centre.</summary>
+        private void PlaceOrbit(Vector3 centre, Vector3 normal, ViewPreset view)
+        {
+            Vector3 flat = Vector3.ProjectOnPlane(normal, Vector3.up);
+            flat = flat.sqrMagnitude < 1e-4f ? Vector3.forward : flat.normalized;
+            flat = Quaternion.AngleAxis(view.sideAngle, Vector3.up) * flat;
+
+            float elevation = view.elevation * Mathf.Deg2Rad;
+            Vector3 offset = (flat * Mathf.Cos(elevation) + Vector3.up * Mathf.Sin(elevation)) * view.distance;
+            Place(centre + offset, -offset);
         }
 
         private void Place(Vector3 position, Vector3 direction)
@@ -166,14 +902,16 @@ namespace EinsteinTelescope.Laser
 
             m_ShownMirror = mirror;
             m_ShownHasBeam = hasBeam;
+            m_HintKey = int.MinValue;   // the goal hint is written again after this
             if (titleText != null)
             {
-                titleText.text = mirror != null ? "MIRROR CAMERA  |  " + mirror.DisplayName.ToUpperInvariant() : "MIRROR CAMERA";
+                titleText.text = mirror != null ? "MIRROR CAMERA  |  " + mirror.DisplayName.ToUpperInvariant() + "  |  " + CurrentView.name.ToUpperInvariant() : "MIRROR CAMERA";
             }
 
             if (hintText != null)
             {
                 hintText.text = mirror == null ? "No mirror selected."
+                    : CurrentView.mode == ViewMode.Orbit ? (hasBeam ? "Press VIEW to look at the mirror from another side." : "No beam on this mirror. Steer the mirrors before it first.")
                     : hasBeam ? "Looking along the reflected beam: put the next iris or mirror on the crosshair."
                     : "No beam on this mirror: looking straight out of it. Steer the mirrors before it first.";
             }

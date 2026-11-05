@@ -3,11 +3,71 @@ guid: b02e8c0b9e16eb6448d2bd74377cbe51
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_BoardScreen
+    second: {fileID: 2100000, guid: a700a96caa2442f682f5188932386b21, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_EmergencyLamp
+    second: {fileID: 2100000, guid: 353e78b624284b2888db5799f85eda00, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_EnvDisplay
+    second: {fileID: 2100000, guid: 76b82badf75149d085b2fe478c43b275, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_ExitSign
+    second: {fileID: 2100000, guid: b250e77f7d814260bec68857ac6a90c8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_LED_Amber
+    second: {fileID: 2100000, guid: bdb51525359f46d38451454a430101a7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_LED_Blue
+    second: {fileID: 2100000, guid: eb0bd4f8ba8a46169dc6800cdb957016, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_LED_Green
+    second: {fileID: 2100000, guid: 7ac25b8618ef4f05aa0560966951b6c6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_Pictograms
+    second: {fileID: 2100000, guid: 98afd893b98e4d33b7ead7614269d190, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_Signal_Amber
+    second: {fileID: 2100000, guid: 0aa5fc8580a643e3a57fdd8ad102cd5c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_Signal_Green
+    second: {fileID: 2100000, guid: 105c6cc0ac684c2f9c84756ce3410f4d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET2_Signal_Red
+    second: {fileID: 2100000, guid: 31845dfee183436d88c6ec925aac356c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ET_Props2_Palette
+    second: {fileID: 2100000, guid: 7c61c0fda7a948269360fd6377100c69, type: 2}
   materials:
     materialImportMode: 2
-    materialName: 0
-    materialSearch: 1
+    materialName: 1
+    materialSearch: 2
     materialLocation: 1
     searchTexturesGlobally: 0
   animations:

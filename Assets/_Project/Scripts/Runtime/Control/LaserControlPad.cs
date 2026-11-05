@@ -19,7 +19,8 @@ namespace EinsteinTelescope.Laser
         ToggleWavelength,
         NextLevel,
         ShowBriefing,
-        Undo
+        Undo,
+        NextCameraView
     }
 
     /// <summary>
@@ -33,6 +34,8 @@ namespace EinsteinTelescope.Laser
     public class LaserControlPad : MonoBehaviour
     {
         private const float ReadoutChangeThreshold = 0.005f;
+
+        private LaserMirrorCamera m_MirrorCamera;
 
         [Tooltip("The panel to steer. Empty = the first MirrorControlPanel in the scene.")]
         [SerializeField] private MirrorControlPanel controlPanel = null;
@@ -105,6 +108,10 @@ namespace EinsteinTelescope.Laser
                 case LaserPadAction.NextLevel: if (levelManager != null) levelManager.NextLevel(); break;
                 case LaserPadAction.ShowBriefing: if (levelManager != null) levelManager.ToggleBriefing(); break;
                 case LaserPadAction.Undo: panel?.Undo(); break;
+                case LaserPadAction.NextCameraView:
+                    if (!m_MirrorCamera) m_MirrorCamera = FindFirstObjectByType<LaserMirrorCamera>();
+                    if (m_MirrorCamera) m_MirrorCamera.NextView();
+                    break;
             }
 
             RefreshLabels(true);
@@ -172,7 +179,8 @@ namespace EinsteinTelescope.Laser
             if (mirror != null)
             {
                 bool mirrorChanged = force || mirror != m_LastShownMirror || mirror.IsFineMode != m_LastShownFine;
-                var angles = new Vector2(mirror.ActualYaw, mirror.ActualPitch);
+                // The commanded angles: what the buttons set. The actual angles also wobble with the suspension and ground motion.
+                var angles = new Vector2(mirror.CommandedYaw, mirror.CommandedPitch);
                 bool anglesChanged = float.IsNaN(m_LastShownAngles.x) ||
                                      Mathf.Abs(angles.x - m_LastShownAngles.x) > ReadoutChangeThreshold ||
                                      Mathf.Abs(angles.y - m_LastShownAngles.y) > ReadoutChangeThreshold;

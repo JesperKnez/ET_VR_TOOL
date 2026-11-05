@@ -7,7 +7,8 @@ namespace EinsteinTelescope.Laser
     /// <summary>
     /// Big floating briefing screen shown at the start of every level. Three pages:
     /// the objective, the controls and the physics (the maths kept simple). The player closes it with
-    /// the X or START button (XR controller ray or mouse); HELP on the control pad or H opens it again.
+    /// the X button (XR controller ray or mouse); HELP on the control pad or H opens it again.
+    /// The last page has no NEXT button.
     /// The texts come from the level (<see cref="LaserLevel"/>) and can be edited in the inspector.
     /// </summary>
     [DefaultExecutionOrder(LaserExecutionOrder.GameLogic - 10)]
@@ -35,7 +36,7 @@ namespace EinsteinTelescope.Laser
 
         [Header("Events")]
         [SerializeField] private UnityEvent onOpened = new UnityEvent();
-        [Tooltip("The player closed the screen (X or START).")]
+        [Tooltip("The player closed the screen (X).")]
         [SerializeField] private UnityEvent onClosed = new UnityEvent();
 
         private LaserLevel m_Level;
@@ -98,7 +99,11 @@ namespace EinsteinTelescope.Laser
             Set(titleText, m_Title);
             Set(bodyText, BuildPage(m_Page));
             Set(pageText, (m_Page + 1) + " / " + PageCount + "   " + s_PageNames[m_Page]);
-            Set(nextButtonText, m_Page == PageCount - 1 ? "START  ►" : "NEXT  ►");
+            Set(nextButtonText, "NEXT  ►");
+            if (nextButtonText != null && nextButtonText.transform.parent != null)
+            {
+                nextButtonText.transform.parent.gameObject.SetActive(m_Page < PageCount - 1);   // the button holds the label
+            }
             for (int i = 0; i < tabImages.Length; i++)
             {
                 if (tabImages[i] != null)
@@ -108,14 +113,10 @@ namespace EinsteinTelescope.Laser
             }
         }
 
-        /// <summary>Next page; on the last page this closes the screen and starts the level.</summary>
+        /// <summary>Next page; does nothing on the last page (close with X).</summary>
         public void NextPage()
         {
-            if (m_Page >= PageCount - 1)
-            {
-                Close();
-            }
-            else
+            if (m_Page < PageCount - 1)
             {
                 ShowPage(m_Page + 1);
             }
