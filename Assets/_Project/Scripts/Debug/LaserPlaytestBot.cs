@@ -633,16 +633,19 @@ public class LaserPlaytestBot : MonoBehaviour
         public bool grade;      // exposure down, contrast up
         public bool ao;         // screen-space ambient occlusion
         public bool greyHall;   // hall walls, ceiling and floor at ~78 % instead of white
+        public bool noHdr, noGlass, noNewProbes;   // diagnostics: camera without HDR, control room glass hidden, west/east hall probes off
     }
 
     static readonly LookVariant[] Looks =
     {
         new LookVariant { name = "A_now" },
-        new LookVariant { name = "C_exposure_AO", grade = true, ao = true },
-        new LookVariant { name = "E_exposure_AO_hall90", grade = true, ao = true, greyHall = true },
+        new LookVariant { name = "F_noHDR", noHdr = true },
+        new LookVariant { name = "G_noGlass", noGlass = true },
+        new LookVariant { name = "H_noNewProbes", noNewProbes = true },
     };
 
     const float GreyHallFactor = 0.9f;
+    Camera lookCamera;
 
     static readonly LookVariant[] OldLooks =
     {
@@ -656,9 +659,36 @@ public class LaserPlaytestBot : MonoBehaviour
     IEnumerator LookTour()
     {
         report.AppendLine("## Look variants");
+        // Which reflection probes exist, and which ones the chrome racks and the desk frame really use
+        foreach (var rp in FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None))
+        {
+            report.AppendLine("- probe " + rp.name + ": enabled " + rp.enabled + ", importance " + rp.importance +
+                              ", bounds " + rp.bounds.min.ToString("F1") + " .. " + rp.bounds.max.ToString("F1") +
+                              ", box projection " + rp.boxProjection + ", blend " + rp.blendDistance +
+                              ", baked texture " + (rp.bakedTexture ? rp.bakedTexture.name : "NONE"));
+        }
+
+        var probeHits = new List<UnityEngine.Rendering.ReflectionProbeBlendInfo>();
+        foreach (Renderer r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        {
+            if (r is LineRenderer) continue;
+            bool interesting = false;
+            foreach (Material m in r.sharedMaterials)
+            {
+                if (m && (m.name.Contains("Chrome") || m.name.Contains("Desk_Stands"))) interesting = true;
+            }
+
+            if (!interesting) continue;
+            r.GetClosestReflectionProbes(probeHits);
+            var names = new List<string>();
+            foreach (var hit in probeHits) names.Add(hit.probe.name + " " + hit.weight.ToString("0.00"));
+            report.AppendLine("- " + r.name + " at " + r.bounds.center.ToString("F1") + " size " + r.bounds.size.ToString("F1") +
+                              " uses: " + (names.Count > 0 ? string.Join(", ", names) : "no probe (sky)"));
+        }
         Camera main = Camera.main;
         var go = new GameObject("Look Camera");
         var cam = go.AddComponent<Camera>();
+        lookCamera = cam;
         if (main) cam.CopyFrom(main);
         cam.stereoTargetEye = StereoTargetEyeMask.None;
         cam.fieldOfView = 60f;
@@ -695,6 +725,7 @@ public class LaserPlaytestBot : MonoBehaviour
             poses.Add(("storage", p, Quaternion.LookRotation(sb.center - p)));
         }
 
+        yield return new WaitForSecondsRealtime(5f);   // let TowerTransparency finish its fade, so every variant shows the same towers
         foreach (LookVariant look in Looks)
         {
             var undo = ApplyLook(look);
@@ -717,6 +748,31 @@ public class LaserPlaytestBot : MonoBehaviour
     System.Action ApplyLook(LookVariant look)
     {
         var undo = new List<System.Action>();
+
+        if (look.noHdr && lookCamera) { lookCamera.allowHDR = false; undo.Add(() => { if (lookCamera) lookCamera.allowHDR = true; }); }
+
+        if (look.noGlass)
+        {
+            GameObject glass = GameObject.Find("ControlRoom_Glass");
+            var hiddenGlass = new List<Renderer>();
+            if (glass) foreach (Renderer r in glass.GetComponentsInChildren<Renderer>()) if (r.enabled) { r.enabled = false; hiddenGlass.Add(r); }
+            report.AppendLine("- glass renderers hidden: " + hiddenGlass.Count);
+            undo.Add(() => { foreach (Renderer r in hiddenGlass) if (r) r.enabled = true; });
+        }
+
+        if (look.noNewProbes)
+        {
+            var off = new List<ReflectionProbe>();
+            foreach (string n in new[] { "RP_Hall_West", "RP_Hall_East" })
+            {
+                GameObject p = GameObject.Find(n);
+                var probe = p ? p.GetComponent<ReflectionProbe>() : null;
+                if (probe && probe.enabled) { probe.enabled = false; off.Add(probe); }
+            }
+
+            report.AppendLine("- new hall probes off: " + off.Count);
+            undo.Add(() => { foreach (var p in off) if (p) p.enabled = true; });
+        }
 
         if (look.grade)
         {

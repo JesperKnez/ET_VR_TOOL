@@ -102,7 +102,20 @@ public static class RenderQualitySetup
             GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ReflectionProbeStatic);
         }
 
-        // RP_Hall stays as the fallback for the middle; RP_ControlRoom keeps importance 2 and blend distance 0.1 (CLAUDE.md)
+        // RP_Hall becomes the fallback only (importance 0): its capture point sits between the towers, so part of its
+        // cubemap sees dark tank walls. With box projection those dark parts landed on props near the walls (the chrome
+        // wire racks turned black). The west/east probes now win everywhere in the hall.
+        // RP_ControlRoom keeps importance 2 and blend distance 0.1 (CLAUDE.md).
+        if (hall)
+        {
+            var hallProbe = hall.GetComponent<ReflectionProbe>();
+            if (hallProbe && hallProbe.importance != 0)
+            {
+                Undo.RecordObject(hallProbe, "Hall probe importance");
+                hallProbe.importance = 0;
+            }
+        }
+
         int sharpened = 0;
         foreach (var probe in Object.FindObjectsByType<ReflectionProbe>(FindObjectsInactive.Include))
         {
@@ -117,23 +130,34 @@ public static class RenderQualitySetup
         return $"Reflection probes: {added} added (west/east hall), {sharpened} set to {PROBE_RESOLUTION} px.";
     }
 
+    /// <summary>
+    /// Small emissive materials get "Realtime emissive": realtime GI is off in this project, so they never light the
+    /// room in the bake (the radioactive glow came from Baked emissive), but they keep glowing. "None" looked safer,
+    /// but URP then strips the _EMISSION keyword and the material stops glowing altogether (Lumi went dark).
+    /// </summary>
     static string GuardEmissiveGi()
     {
         var changed = new List<string>();
         foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets/_Project/Materials" }))
         {
             var material = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
-            if (!material || MainLightMaterials.Contains(material.name)) continue;
-            var flags = material.globalIlluminationFlags;
-            if ((flags & (MaterialGlobalIlluminationFlags.BakedEmissive | MaterialGlobalIlluminationFlags.RealtimeEmissive)) == 0) continue;
+            if (!material || MainLightMaterials.Contains(material.name) || !material.HasProperty("_EmissionColor")) continue;
+
+            Color emission = material.GetColor("_EmissionColor");
+            bool emits = material.IsKeywordEnabled("_EMISSION") || emission.maxColorComponent > 0.5f;
+            bool baked = (material.globalIlluminationFlags & MaterialGlobalIlluminationFlags.BakedEmissive) != 0;
+            if (!emits && !baked) continue;
+            if (!baked && material.IsKeywordEnabled("_EMISSION") && material.globalIlluminationFlags == MaterialGlobalIlluminationFlags.RealtimeEmissive) continue;
+
             Undo.RecordObject(material, "Emission GI");
-            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            if (emits) material.EnableKeyword("_EMISSION");
             EditorUtility.SetDirty(material);
             changed.Add(material.name);
         }
 
         return changed.Count == 0
             ? "Emissive GI: nothing to change."
-            : "Emissive GI set to None (no glow in the bake): " + string.Join(", ", changed) + ".";
+            : "Small emissives set to Realtime emissive (glow, but no light in the bake): " + string.Join(", ", changed) + ".";
     }
 }

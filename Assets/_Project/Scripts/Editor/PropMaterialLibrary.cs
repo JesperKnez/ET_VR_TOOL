@@ -184,10 +184,11 @@ static class PropMaterialLibrary
 
         if (rule.finish == Finish.Emissive)
         {
-            // Small lights: glow (Bloom picks it up), but never light the room when baking (CLAUDE.md)
+            // Small lights: glow (Bloom picks it up), but never light the room when baking (CLAUDE.md). Realtime
+            // emissive, not None: realtime GI is off, so nothing reaches the bake, and URP keeps _EMISSION on.
             material.EnableKeyword("_EMISSION");
-            material.SetColor("_EmissionColor", colour * 1.6f);
-            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            material.SetColor("_EmissionColor", colour * 1.3f);
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
         else if (family != null)
         {
