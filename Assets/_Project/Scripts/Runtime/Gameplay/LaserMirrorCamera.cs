@@ -37,7 +37,9 @@ namespace EinsteinTelescope.Laser
             /// <summary>Camera circles the mirror at a fixed distance, so you see the tower, the mirror and both beams.</summary>
             Orbit,
             /// <summary>From the mirror surface along the reflected beam.</summary>
-            AlongBeam
+            AlongBeam,
+            /// <summary>Real 3D picture of the whole path of the beam you steer, from the mirror to its target, seen from the side through the see-through tower.</summary>
+            BeamPath
         }
 
         [System.Serializable]
@@ -69,7 +71,8 @@ namespace EinsteinTelescope.Laser
 
         private static ViewPreset[] DefaultViews() => new[]
         {
-            new ViewPreset("Along beam", ViewMode.AlongBeam, 0f, 0f, 0f, 16f),
+            new ViewPreset("Whole path", ViewMode.BeamPath, 0f, 35f, 90f, 40f),
+            new ViewPreset("Close-up", ViewMode.AlongBeam, 0f, 0f, 0f, 16f),
             new ViewPreset("Overview", ViewMode.Orbit, 5f, 40f, 30f, 35f),
             new ViewPreset("Top", ViewMode.Orbit, 5f, 80f, 0f, 35f)
         };
@@ -155,6 +158,10 @@ namespace EinsteinTelescope.Laser
 
             CreateRing();
             UpdateViewLabel();
+            if (hintText != null && !showHintText)
+            {
+                hintText.text = "";   // the on-picture guide explains what to do
+            }
         }
 
         private void CreateRing()
@@ -203,6 +210,15 @@ namespace EinsteinTelescope.Laser
 
             m_TowerRenderers = tower.ToArray();
 
+            var crane = new System.Collections.Generic.List<Renderer>();
+            GameObject craneRoot = GameObject.Find("ETP_OverheadCrane");
+            if (craneRoot != null)
+            {
+                crane.AddRange(craneRoot.GetComponentsInChildren<Renderer>(false));
+            }
+
+            m_CraneRenderers = crane.ToArray();
+
             UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering += HandleBeginCamera;
             UnityEngine.Rendering.RenderPipelineManager.endCameraRendering += HandleEndCamera;
         }
@@ -229,9 +245,16 @@ namespace EinsteinTelescope.Laser
             if (m_BeamLine != null) m_BeamLine.forceRenderingOff = !hidden;
             if (m_Dot != null) m_Dot.forceRenderingOff = !hidden;
 
-            if (CurrentView.mode == ViewMode.AlongBeam)
+            GhostTower(hidden);   // every view: the tower walls must not hide the beam
+
+            // The overhead crane hangs between the top-down camera and the floor
+            bool hideCrane = hidden && CurrentView.mode == ViewMode.BeamPath;
+            for (int i = 0; i < m_CraneRenderers.Length; i++)
             {
-                GhostTower(hidden);
+                if (m_CraneRenderers[i] != null)
+                {
+                    m_CraneRenderers[i].forceRenderingOff = hideCrane;
+                }
             }
 
             if (hidden)
@@ -358,6 +381,13 @@ namespace EinsteinTelescope.Laser
                             line.forceRenderingOff = true;
                         }
                     }
+                    if (feedCamera.orthographic)
+                    {
+                        float width = 2f * feedCamera.orthographicSize / Mathf.Max(1, m_Texture != null ? m_Texture.height : resolution.y) * beamWidthPixels;
+                        line.startWidth = line.endWidth = width;
+                        continue;
+                    }
+
                     line.startWidth = Vector3.Distance(from, line.GetPosition(0)) * worldPerPixelPerMetre * beamWidthPixels;
                     line.endWidth = Vector3.Distance(from, line.GetPosition(1)) * worldPerPixelPerMetre * beamWidthPixels;
                 }
@@ -403,10 +433,12 @@ namespace EinsteinTelescope.Laser
         {
             MirrorControlPanel panel = controlPanel != null ? controlPanel : MirrorControlPanel.FirstActive;
             MirrorMount mirror = panel != null ? panel.SelectedMirror : null;
+            m_GuideValid = false;
             if (mirror == null || feedCamera == null)
             {
                 SetCamera(false);
                 UpdateTexts(null, false);
+                SetGuideVisible(false);
                 return;
             }
 
@@ -419,8 +451,14 @@ namespace EinsteinTelescope.Laser
             bool hasBeam = TryFindIncomingBeam(optic, out Vector3 hitPoint, out Vector3 incoming) && Vector3.Dot(incoming, normal) < 0f;
             FollowsBeam = hasBeam;
 
+            m_GuideMirror = mirror;
+            m_GuideSurface = surface;
+            m_GuideIncoming = incoming;
+            m_GuideNormal = normal;
+            m_GuideHasBeam = hasBeam;
+
             ViewPreset view = CurrentView;
-            bool showCrosshair = view.mode == ViewMode.AlongBeam;
+            bool showCrosshair = false;   // replaced by the labelled ring and dot (the crosshair was confusing)
             for (int i = 0; i < m_Crosshair.Length; i++)
             {
                 if (m_Crosshair[i] != null && m_Crosshair[i].activeSelf != showCrosshair)
@@ -430,9 +468,14 @@ namespace EinsteinTelescope.Laser
             }
 
             feedCamera.fieldOfView = view.fieldOfView > 0f ? view.fieldOfView : fieldOfView;
+            feedCamera.orthographic = false;   // only the Beam path view is orthographic (set in PlaceBeamPath)
             if (view.mode == ViewMode.Orbit)
             {
                 PlaceOrbit(centre, normal, view);
+            }
+            else if (view.mode == ViewMode.BeamPath)
+            {
+                PlaceBeamPath(hasBeam, hitPoint, incoming, normal, centre, view);
             }
             else
             {
@@ -455,11 +498,17 @@ namespace EinsteinTelescope.Laser
             {
                 UpdateGoal();
             }
+            else if (view.mode == ViewMode.BeamPath)
+            {
+                UpdateRealGoal();
+            }
             else if (m_Ring != null)
             {
                 SetOverlay(false);
                 m_ZoomFov = 0f;
             }
+
+            UpdateGuide(view.mode);
         }
 
         // ----- Goal ring: where the beam must go --------------------------------------------------------
@@ -475,6 +524,7 @@ namespace EinsteinTelescope.Laser
         private readonly System.Collections.Generic.List<int> m_BestPath = new System.Collections.Generic.List<int>();
         private float m_SmoothedError = -1f;
         private Renderer[] m_TowerRenderers = new Renderer[0];
+        private Renderer[] m_CraneRenderers = new Renderer[0];
         private LaserTarget[] m_Targets = new LaserTarget[0];
         private float m_TargetsTime = float.NegativeInfinity;
 
@@ -484,6 +534,451 @@ namespace EinsteinTelescope.Laser
         private Vector3 m_Landing;        // L: where the beam lands, unfolded
         private float m_GoalTolerance;
         private bool m_GoalReached;       // the path really ends on the target (false = guessed from the direction the beam heads)
+
+        // ----- Beam path view: the real beam in the real tower -----------------------------------------------
+
+        [Header("Beam path view")]
+        [Tooltip("The camera stays inside this box (world space), so the hall walls do not block the picture. Default: the hall.")]
+        [SerializeField] private Vector3 cameraLimitMin = new Vector3(-16.5f, 0.5f, -10.5f);
+        [SerializeField] private Vector3 cameraLimitMax = new Vector3(16.5f, 7.5f, 10.5f);
+
+        private Vector3 m_RealGoal;        // centre of the target, real world position
+        private Vector3 m_RealLanding;     // where the beam really lands (or would land, extended to the target)
+        private Vector3 m_RealAxis;        // direction of the last piece of beam
+        private Bounds m_PathBounds;       // mirror, bounce points and target
+        private Vector3 m_PathCentre;
+        private float m_PathRadius = -1f;
+
+        /// <summary>
+        /// Camera beside the whole path of the steered beam, high enough to look down on it. The real (cyan) beam, the
+        /// other beams and the optics are all in the picture at their real positions, so what you see is what the laser does.
+        /// </summary>
+        private void PlaceBeamPath(bool hasBeam, Vector3 hitPoint, Vector3 incoming, Vector3 normal, Vector3 centre, ViewPreset view)
+        {
+            Vector3 direction = hasBeam ? LaserOptics.Reflect(incoming, normal) : normal;
+            Vector3 origin = hasBeam ? hitPoint + direction * 0.01f : centre + normal * 0.2f;
+            m_BeamOrigin = origin;
+            m_GoalValid = TryTrace(origin, direction, out m_GoalCentre, out m_Landing, out m_GoalTolerance, out m_GoalReached);
+            if (!m_GoalValid)
+            {
+                m_PathRadius = -1f;
+                PlaceOrbit(centre, normal, new ViewPreset("", ViewMode.Orbit, 4f, view.elevation, 30f, view.fieldOfView));
+                return;
+            }
+
+            // Straight from above (orthographic): no perspective, so nothing in the hall can stand in front of the beam,
+            // and the whole path always fits. Screen up = world +Z.
+            Bounds bounds = m_PathBounds;
+            bounds.Encapsulate(origin);
+            float aspect = Mathf.Max(0.5f, feedCamera.aspect);
+            float half = Mathf.Max(bounds.extents.z, bounds.extents.x / aspect, 0.5f) * 1.15f + 0.3f;
+            if (m_PathRadius < 0f)
+            {
+                m_PathCentre = bounds.center;
+                m_PathRadius = half;
+            }
+            else
+            {
+                float t = 1f - Mathf.Exp(-5f * Time.unscaledDeltaTime);   // smooth: the picture must not jump
+                m_PathCentre = Vector3.Lerp(m_PathCentre, bounds.center, t);
+                m_PathRadius = Mathf.Lerp(m_PathRadius, half, t);
+            }
+
+            feedCamera.orthographic = true;
+            feedCamera.orthographicSize = m_PathRadius;
+            var position = new Vector3(m_PathCentre.x, cameraLimitMax.y - 0.3f, m_PathCentre.z);
+            ViewDirection = Vector3.down;
+            feedCamera.transform.SetPositionAndRotation(position, Quaternion.LookRotation(Vector3.down, Vector3.forward));
+        }
+
+        /// <summary>
+        /// Ring round the real target and a dot where the beam really lands, at their real positions. The ring is never
+        /// drawn smaller than a few pixels; use the Along beam view for the last millimetres.
+        /// </summary>
+        private void UpdateRealGoal()
+        {
+            if (!m_GoalValid)
+            {
+                SetOverlay(false);
+                SetHint(-2, "none");
+                return;
+            }
+
+            Vector3 toGoal = m_RealGoal - feedCamera.transform.position;
+            float distance = Mathf.Max(toGoal.magnitude, 0.5f);
+            float fieldHeight = feedCamera.orthographic ? 2f * feedCamera.orthographicSize : 2f * distance * Mathf.Tan(feedCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float pixel = fieldHeight / Mathf.Max(1, m_Texture != null ? m_Texture.height : resolution.y);
+            Quaternion facing = feedCamera.transform.rotation;
+
+            Vector3 offset = m_RealLanding - m_RealGoal;
+            offset -= m_RealAxis * Vector3.Dot(offset, m_RealAxis);
+            bool centred = offset.magnitude <= m_GoalTolerance;
+            float ringRadius = Mathf.Max(m_GoalTolerance, pixel * 8f);
+
+            for (int i = 0; i < RingPoints; i++)
+            {
+                float angle = i * Mathf.PI * 2f / RingPoints;
+                m_Ring.SetPosition(i, m_RealGoal + facing * new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * ringRadius);
+            }
+
+            m_Ring.widthMultiplier = Mathf.Max(pixel * 3f, 0.0005f);
+            SetColor(m_RingMaterial, centred ? goalReachedColor : goalColor);
+
+            float dotSize = Mathf.Max(pixel * 8f, 0.004f);
+            Vector3 right = facing * Vector3.right;
+            m_Dot.SetPosition(0, m_RealLanding - right * dotSize * 0.05f);
+            m_Dot.SetPosition(1, m_RealLanding + right * dotSize * 0.05f);
+            m_Dot.widthMultiplier = dotSize;
+            SetColor(m_BeamMaterial, beamColor);
+
+            m_Ring.enabled = true;
+            m_Dot.enabled = true;
+            m_BeamLine.enabled = false;   // the real beam is drawn by the laser itself
+
+            m_GuideValid = true;
+            m_GuideSteps = false;
+            m_GuideGoal = m_RealGoal;
+            m_GuideLanding = m_RealLanding;
+            m_GuideBeamMid = Vector3.Lerp(m_BeamOrigin, m_RealLanding, 0.5f);
+            m_GuideRingRadius = ringRadius;
+            m_GuideCentred = centred;
+            SetHint(-3 - (m_GoalReached ? 0 : 1), "path");
+        }
+
+        // ----- On-picture explanation ---------------------------------------------------------------------
+        //
+        // What the player sees must explain itself: a banner says what to do, labels name the beam, the target and the
+        // landing dot, an arrow points from the dot to the ring, and (Along beam view) the banner says which buttons to
+        // press and how often. That number comes from the mirror's real axes: it is how far the dot moves per button press.
+
+        [Header("On-picture explanation")]
+        [SerializeField] private bool showGuide = true;
+        [Tooltip("Also show the small hint line under the picture (the guide replaces it).")]
+        [SerializeField] private bool showHintText = false;
+
+        private RectTransform m_GuideRoot;
+        private Image m_BannerBackground;
+        private Text m_Banner, m_BannerSub, m_LabelBeam, m_LabelGoal, m_LabelDot;
+        private Image m_ArrowShaft, m_ArrowHeadA, m_ArrowHeadB;
+        private bool m_GuideValid;
+        private bool m_GuideSteps;                 // Along beam view: the offset is in the camera's own plane, so button steps can be worked out
+        private Vector3 m_GuideGoal, m_GuideLanding, m_GuideBeamMid;
+        private float m_GuideRingRadius;
+        private bool m_GuideCentred;
+        private MirrorMount m_GuideMirror;
+        private Transform m_GuideSurface;
+        private Vector3 m_GuideIncoming, m_GuideNormal;
+        private bool m_GuideHasBeam;
+        private Vector2 m_SmoothedSteps;
+        private bool m_StepsKnown;
+
+        private static readonly Color BannerBack = new Color(0.01f, 0.03f, 0.06f, 0.78f);
+
+        private void EnsureGuide()
+        {
+            if (m_GuideRoot != null || feedImage == null)
+            {
+                return;
+            }
+
+            Font font = titleText != null && titleText.font != null ? titleText.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var root = new GameObject("Guide", typeof(RectTransform));
+            root.layer = feedImage.gameObject.layer;
+            m_GuideRoot = (RectTransform)root.transform;
+            m_GuideRoot.SetParent(feedImage.transform, false);
+            m_GuideRoot.anchorMin = Vector2.zero;
+            m_GuideRoot.anchorMax = Vector2.one;
+            m_GuideRoot.offsetMin = m_GuideRoot.offsetMax = Vector2.zero;
+
+            // Banner strip at the top
+            m_BannerBackground = GuideImage("Banner Background", BannerBack);
+            var back = m_BannerBackground.rectTransform;
+            back.anchorMin = new Vector2(0f, 1f);
+            back.anchorMax = new Vector2(1f, 1f);
+            back.pivot = new Vector2(0.5f, 1f);
+            back.sizeDelta = new Vector2(0f, 128f);
+            back.anchoredPosition = Vector2.zero;
+
+            m_Banner = GuideText("Banner", font, 46, Color.white, true);
+            StretchIn(m_Banner.rectTransform, back, 0.42f, 1f);
+            m_BannerSub = GuideText("Banner Sub", font, 34, new Color(0.8f, 0.9f, 1f, 1f), false);
+            StretchIn(m_BannerSub.rectTransform, back, 0f, 0.46f);
+
+            m_LabelBeam = GuideText("Label Laser Beam", font, 32, beamColor, true);
+            m_LabelGoal = GuideText("Label Target", font, 32, goalColor, true);
+            m_LabelDot = GuideText("Label Landing", font, 32, beamColor, true);
+            m_LabelBeam.text = "LASER BEAM";
+            m_LabelGoal.text = "TARGET";
+            m_LabelDot.text = "BEAM LANDS HERE";
+
+            m_ArrowShaft = GuideImage("Arrow Shaft", Color.white);
+            m_ArrowHeadA = GuideImage("Arrow Head A", Color.white);
+            m_ArrowHeadB = GuideImage("Arrow Head B", Color.white);
+            foreach (Image arrow in new[] { m_ArrowShaft, m_ArrowHeadA, m_ArrowHeadB })
+            {
+                arrow.rectTransform.anchorMin = arrow.rectTransform.anchorMax = Vector2.zero;
+            }
+
+            m_ArrowHeadA.rectTransform.pivot = m_ArrowHeadB.rectTransform.pivot = new Vector2(0f, 0.5f);
+            m_ArrowHeadA.rectTransform.sizeDelta = m_ArrowHeadB.rectTransform.sizeDelta = new Vector2(44f, 9f);
+        }
+
+        private Image GuideImage(string objectName, Color color)
+        {
+            var go = new GameObject(objectName, typeof(RectTransform), typeof(Image));
+            go.layer = m_GuideRoot.gameObject.layer;
+            go.transform.SetParent(m_GuideRoot, false);
+            var image = go.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private Text GuideText(string objectName, Font font, int size, Color color, bool bold)
+        {
+            var go = new GameObject(objectName, typeof(RectTransform), typeof(Text));
+            go.layer = m_GuideRoot.gameObject.layer;
+            go.transform.SetParent(m_GuideRoot, false);
+            var text = go.GetComponent<Text>();
+            text.font = font;
+            text.fontSize = size;
+            text.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            text.color = color;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
+            var outline = go.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.9f);
+            outline.effectDistance = new Vector2(2f, -2f);
+            var rect = text.rectTransform;
+            rect.anchorMin = rect.anchorMax = Vector2.zero;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(520f, 44f);
+            return text;
+        }
+
+        /// <summary>Places a banner text in a vertical band (fractions) of the banner strip, parented to the root.</summary>
+        private void StretchIn(RectTransform text, RectTransform strip, float from, float to)
+        {
+            text.SetParent(strip, false);
+            text.anchorMin = new Vector2(0f, from);
+            text.anchorMax = new Vector2(1f, to);
+            text.offsetMin = new Vector2(12f, 0f);
+            text.offsetMax = new Vector2(-12f, 0f);
+        }
+
+        private void SetGuideVisible(bool on)
+        {
+            if (m_GuideRoot != null && m_GuideRoot.gameObject.activeSelf != on)
+            {
+                m_GuideRoot.gameObject.SetActive(on);
+            }
+        }
+
+        private void UpdateGuide(ViewMode mode)
+        {
+            if (!showGuide || feedImage == null || feedCamera == null || (mode != ViewMode.AlongBeam && mode != ViewMode.BeamPath))
+            {
+                SetGuideVisible(false);
+                return;
+            }
+
+            EnsureGuide();
+            SetGuideVisible(true);
+
+            bool labels = false;
+            if (!m_GuideHasBeam)
+            {
+                SetBanner("NO LASER REACHES THIS MIRROR", Color.white, "Press PREV to pick the mirror before it, and steer that one first.");
+            }
+            else if (!m_GuideValid)
+            {
+                SetBanner("NO PATH TO A TARGET YET", Color.white, "Steer the mirrors before this one until the blue beam reaches an iris or the detector.");
+            }
+            else
+            {
+                labels = true;
+                string sub = mode == ViewMode.AlongBeam ? StepsText() : "For the last millimetres: press VIEW and choose CLOSE-UP.";
+                if (m_GuideCentred)
+                {
+                    SetBanner("ON TARGET - HOLD STEADY", goalReachedColor, "The dot is inside the ring. Do not touch the mirror.");
+                }
+                else if (!m_GoalReached)
+                {
+                    SetBanner("THE BEAM MISSES THE TARGET", goalColor, sub);
+                }
+                else
+                {
+                    SetBanner("MOVE THE DOT INTO THE RING", Color.white, sub);
+                }
+            }
+
+            PlaceLabels(labels);
+        }
+
+        private string m_BannerKey = "";
+
+        private void SetBanner(string main, Color color, string sub)
+        {
+            m_Banner.color = color;
+            if (m_BannerKey != main + sub)
+            {
+                m_BannerKey = main + sub;
+                m_Banner.text = main;
+                m_BannerSub.text = sub;
+            }
+        }
+
+        private void PlaceLabels(bool on)
+        {
+            m_LabelBeam.gameObject.SetActive(on);
+            m_LabelGoal.gameObject.SetActive(on);
+            m_LabelDot.gameObject.SetActive(on);
+            bool arrow = false;
+            if (on)
+            {
+                float w = m_GuideRoot.rect.width, h = m_GuideRoot.rect.height;
+                Vector3 goalView = feedCamera.WorldToViewportPoint(m_GuideGoal);
+                Vector3 dotView = feedCamera.WorldToViewportPoint(m_GuideLanding);
+                Vector3 beamView = feedCamera.WorldToViewportPoint(m_GuideBeamMid);
+                Vector3 edgeView = feedCamera.WorldToViewportPoint(m_GuideGoal + feedCamera.transform.right * m_GuideRingRadius);
+                float ringPx = Mathf.Max(14f, Mathf.Abs(edgeView.x - goalView.x) * w);
+
+                Color goalLabel = m_GuideCentred ? goalReachedColor : goalColor;
+                m_LabelGoal.color = goalLabel;
+                SetLabel(m_LabelGoal, goalView, w, h, new Vector2(0f, ringPx + 34f));
+                SetLabel(m_LabelDot, dotView, w, h, new Vector2(0f, -(Mathf.Min(ringPx, 40f) + 34f)));
+                SetLabel(m_LabelBeam, beamView, w, h, new Vector2(0f, 30f));
+
+                // Arrow from the dot to the ring (only when the dot is clearly outside)
+                var goalPx = new Vector2(goalView.x * w, goalView.y * h);
+                var dotPx = new Vector2(dotView.x * w, dotView.y * h);
+                Vector2 delta = goalPx - dotPx;
+                float length = delta.magnitude;
+                if (!m_GuideCentred && goalView.z > 0f && dotView.z > 0f && length > ringPx + 70f)
+                {
+                    Vector2 dir = delta / length;
+                    Vector2 start = dotPx + dir * 22f;
+                    Vector2 end = goalPx - dir * (ringPx + 8f);
+                    float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+                    var shaft = m_ArrowShaft.rectTransform;
+                    shaft.pivot = new Vector2(0f, 0.5f);
+                    shaft.anchoredPosition = start;
+                    shaft.sizeDelta = new Vector2((end - start).magnitude, 9f);
+                    shaft.localRotation = Quaternion.Euler(0f, 0f, angle);
+                    m_ArrowHeadA.rectTransform.anchoredPosition = end;
+                    m_ArrowHeadA.rectTransform.localRotation = Quaternion.Euler(0f, 0f, angle + 180f - 28f);
+                    m_ArrowHeadB.rectTransform.anchoredPosition = end;
+                    m_ArrowHeadB.rectTransform.localRotation = Quaternion.Euler(0f, 0f, angle + 180f + 28f);
+                    arrow = true;
+                }
+            }
+
+            m_ArrowShaft.gameObject.SetActive(arrow);
+            m_ArrowHeadA.gameObject.SetActive(arrow);
+            m_ArrowHeadB.gameObject.SetActive(arrow);
+        }
+
+        private static void SetLabel(Text label, Vector3 view, float width, float height, Vector2 offsetPixels)
+        {
+            bool visible = view.z > 0f && view.x > -0.1f && view.x < 1.1f && view.y > -0.1f && view.y < 1.1f;
+            label.gameObject.SetActive(visible);
+            if (visible)
+            {
+                float x = Mathf.Clamp(view.x, 0.14f, 0.86f) * width;
+                float y = Mathf.Clamp(view.y, 0.1f, 0.74f) * height;   // keeps clear of the banner
+                label.rectTransform.anchoredPosition = new Vector2(x, y) + offsetPixels;
+            }
+        }
+
+        /// <summary>"Press ► 3×  then ▲ 2×": the buttons and how many presses bring the dot onto the ring.</summary>
+        private string StepsText()
+        {
+            if (!m_GuideSteps || !TryComputeSteps(out Vector2 raw))
+            {
+                m_StepsKnown = false;
+                return "Move the blue beam so the dot lands in the ring.";
+            }
+
+            m_SmoothedSteps = m_StepsKnown ? Vector2.Lerp(m_SmoothedSteps, raw, 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime)) : raw;
+            m_StepsKnown = true;
+
+            int yaw = Mathf.Min(99, Mathf.RoundToInt(Mathf.Abs(m_SmoothedSteps.x)));
+            int pitch = Mathf.Min(99, Mathf.RoundToInt(Mathf.Abs(m_SmoothedSteps.y)));
+            if (yaw == 0 && pitch == 0)
+            {
+                return m_GuideMirror.IsFineMode
+                    ? "Almost there: single presses of the arrows."
+                    : "Almost there: press the centre button to switch to FINE steps.";
+            }
+
+            string text = "Press  ";
+            if (yaw > 0)
+            {
+                text += (m_SmoothedSteps.x > 0f ? "► " : "◄ ") + yaw + "x";
+            }
+
+            if (pitch > 0)
+            {
+                text += (yaw > 0 ? "   and   " : "") + (m_SmoothedSteps.y > 0f ? "▲ " : "▼ ") + pitch + "x";
+            }
+
+            return text + (m_GuideMirror.IsFineMode ? "" : "   (centre button = FINE)");
+        }
+
+        /// <summary>
+        /// How many presses of the yaw and pitch buttons (signed: + = ► and ▲) move the dot from where it lands to the
+        /// ring. One press tilts the mirror by one step about its own axes (same maths as MirrorMount); the reflected
+        /// beam turns twice as much, and the dot moves that angle times the distance to the goal, in the picture's plane.
+        /// </summary>
+        private bool TryComputeSteps(out Vector2 steps)
+        {
+            steps = Vector2.zero;
+            if (m_GuideMirror == null || !m_GuideHasBeam || m_GuideSurface == null)
+            {
+                return false;
+            }
+
+            float step = m_GuideMirror.CurrentStepDegrees;
+            Transform mount = m_GuideMirror.transform;
+
+            // Measure instead of calculating: tilt the mount by one step the way MirrorMount does (nominal * yaw * pitch),
+            // read where the coated face then points, and put the mount back, all within this frame. This is right for any
+            // hierarchy (mirrored parents, odd axes).
+            Quaternion saved = mount.localRotation;
+            Quaternion yawRotation = Quaternion.AngleAxis(m_GuideMirror.ActualYaw, Vector3.up);
+            Quaternion pitchRotation = Quaternion.AngleAxis(-m_GuideMirror.ActualPitch, Vector3.right);
+            Quaternion nominal = saved * Quaternion.Inverse(yawRotation * pitchRotation);
+
+            mount.localRotation = nominal * Quaternion.AngleAxis(m_GuideMirror.ActualYaw + step, Vector3.up) * pitchRotation;
+            Vector3 yawNormal = m_GuideSurface.forward;
+            mount.localRotation = nominal * yawRotation * Quaternion.AngleAxis(-(m_GuideMirror.ActualPitch + step), Vector3.right);   // pitch up = -angle
+            Vector3 pitchNormal = m_GuideSurface.forward;
+            mount.localRotation = saved;
+
+            Vector3 outgoing = LaserOptics.Reflect(m_GuideIncoming, m_GuideNormal);
+            Vector3 yawOut = LaserOptics.Reflect(m_GuideIncoming, yawNormal);
+            Vector3 pitchOut = LaserOptics.Reflect(m_GuideIncoming, pitchNormal);
+
+            float lever = Vector3.Distance(m_BeamOrigin, m_GuideGoal);
+            Vector3 right = feedCamera.transform.right;
+            Vector3 up = feedCamera.transform.up;
+            var yawMove = new Vector2(Vector3.Dot(yawOut - outgoing, right), Vector3.Dot(yawOut - outgoing, up)) * lever;
+            var pitchMove = new Vector2(Vector3.Dot(pitchOut - outgoing, right), Vector3.Dot(pitchOut - outgoing, up)) * lever;
+            Vector3 missing = m_GuideGoal - m_GuideLanding;
+            var need = new Vector2(Vector3.Dot(missing, right), Vector3.Dot(missing, up));
+
+            float det = yawMove.x * pitchMove.y - yawMove.y * pitchMove.x;
+            if (Mathf.Abs(det) < 1e-12f)
+            {
+                return false;
+            }
+
+            steps.x = (need.x * pitchMove.y - need.y * pitchMove.x) / det;
+            steps.y = (yawMove.x * need.y - yawMove.y * need.x) / det;
+            return true;
+        }
 
         [Header("Chase camera (Along beam view)")]
         [Tooltip("How far the camera sits beside the beam, as a fraction of the distance to the goal. 0 = exactly on the beam (the beam is then seen end-on, as a dot).")]
@@ -575,6 +1070,14 @@ namespace EinsteinTelescope.Laser
 
             SetOverlay(true);
 
+            m_GuideValid = true;
+            m_GuideSteps = true;
+            m_GuideGoal = m_GoalCentre;
+            m_GuideLanding = landing;
+            m_GuideBeamMid = Vector3.Lerp(m_BeamOrigin, landing, 0.6f);
+            m_GuideRingRadius = tolerance;
+            m_GuideCentred = errorLength <= tolerance;
+
             float cm = fieldHeight * 100f;
             SetHint(Mathf.RoundToInt(cm * 10f) + (m_GoalReached ? 0 : 1), cm < 10f ? cm.ToString("0.0") : Mathf.RoundToInt(cm).ToString());
         }
@@ -594,12 +1097,20 @@ namespace EinsteinTelescope.Laser
 
         private void SetHint(int key, string heightCm)
         {
-            if (hintText == null || key == m_HintKey)
+            if (hintText == null || key == m_HintKey || !showHintText)
             {
                 return;
             }
 
             m_HintKey = key;
+            if (heightCm == "path")
+            {
+                hintText.text = m_GoalReached
+                    ? "Cyan = the beam you steer. Ring = goal, dot = where it lands. For the last millimetres use VIEW: along beam."
+                    : "The beam misses the goal. Steer it until it reaches the ring.";
+                return;
+            }
+
             hintText.text = heightCm == "none"
                 ? "No beam path to an iris or detector yet. Steer the mirrors before it first."
                 : (m_GoalReached ? "Dot = where the beam lands. Ring = goal." : "Beam misses the goal: steer the dot towards the ring.") + " Picture " + heightCm + " cm high.";
@@ -700,6 +1211,17 @@ namespace EinsteinTelescope.Laser
                 targetPoint = target.Surface.position;
                 landingPoint = last.Start + lastDirection * Vector3.Dot(targetPoint - last.Start, lastDirection);   // the beam, extended to the target
                 tolerance = target.CenteringTolerance;
+            }
+
+            // The real positions (for the Beam path view) and the box round the whole path
+            m_RealGoal = targetPoint;
+            m_RealLanding = landingPoint;
+            m_RealAxis = lastDirection;
+            m_PathBounds = new Bounds(targetPoint, Vector3.zero);
+            for (int k = 0; k < path.Count; k++)
+            {
+                m_PathBounds.Encapsulate(m_Segments[path[k]].Start);
+                m_PathBounds.Encapsulate(m_Segments[path[k]].End);
             }
 
             goal = Unfold(targetPoint, path);
@@ -908,7 +1430,11 @@ namespace EinsteinTelescope.Laser
                 titleText.text = mirror != null ? "MIRROR CAMERA  |  " + mirror.DisplayName.ToUpperInvariant() + "  |  " + CurrentView.name.ToUpperInvariant() : "MIRROR CAMERA";
             }
 
-            if (hintText != null)
+            if (hintText != null && !showHintText)
+            {
+                hintText.text = mirror == null ? "No mirror selected." : CurrentView.mode == ViewMode.Orbit ? "Press VIEW for another side." : "";
+            }
+            else if (hintText != null)
             {
                 hintText.text = mirror == null ? "No mirror selected."
                     : CurrentView.mode == ViewMode.Orbit ? (hasBeam ? "Press VIEW to look at the mirror from another side." : "No beam on this mirror. Steer the mirrors before it first.")
