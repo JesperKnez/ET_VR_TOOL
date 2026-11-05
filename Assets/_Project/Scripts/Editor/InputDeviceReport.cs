@@ -83,7 +83,7 @@ static class InputDeviceCleanup
         var list = new System.Collections.Generic.List<InputDevice>();
         foreach (InputDevice device in InputSystem.devices)
         {
-            if (device.layout == "DualSenseGamepadHID") list.Add(device);
+            if (device.layout == "DualSenseGamepadHID" || device.layout == "DualSenseGyroGamepad") list.Add(device);
         }
 
         foreach (InputDevice device in list) InputSystem.RemoveDevice(device);
