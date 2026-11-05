@@ -13,7 +13,7 @@ using UnityEngine.Rendering.Universal;
 ///  - Slightly less saturation, as in the photos. Bloom only on what is really brighter than white.
 ///  - Hall walls, ceiling and floor at 90 % of their colour: pure white burns out (CLAUDE.md: aim for 70-80 % grey;
 ///    90 % keeps the high-key look of the real hall).
-///  - Ambient occlusion: SSAO on the PC renderer only (Link; too heavy for a standalone Quest), and baked AO in the
+///  - Ambient occlusion: SSAO (contact shadows, radius 20 cm) on the PC renderer only (Link; too heavy for a standalone Quest), and baked AO in the
 ///    lightmaps (free at runtime, so the Quest build gets contact shadows too).
 /// Chosen with LaserPlaytestBot's "looks" tour (variant between C and D, 5 Nov 2026). Bake the lighting afterwards.
 /// All values are in the Inspector of the volume profile, the renderer and the Lighting window.
@@ -119,14 +119,24 @@ public static class HallLookSetup
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        // Same strength as the preview: visible contact shadows under and between props
+        // Small contact shadows only: a large radius (0.35 m) blackened everything under the monitor, and the
+        // blue-noise method with few samples looked grainy (no TAA in VR to smooth it). Baked AO does the broad shading.
         var settings = new SerializedObject(feature);
-        SetFloat(settings, "m_Settings.Intensity", 1.6f);
-        SetFloat(settings, "m_Settings.Radius", 0.35f);
+        SetFloat(settings, "m_Settings.Intensity", 1.0f);
+        SetFloat(settings, "m_Settings.Radius", 0.2f);
+        SetEnum(settings, "m_Settings.AOMethod", 1);   // interleaved gradient: smoother than blue noise
+        SetEnum(settings, "m_Settings.Samples", 0);    // high
+        SetEnum(settings, "m_Settings.BlurQuality", 0); // high (bilateral)
         settings.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(feature);
         EditorUtility.SetDirty(renderer);
         return "on (PC renderer)";
+    }
+
+    static void SetEnum(SerializedObject so, string path, int value)
+    {
+        var property = so.FindProperty(path);
+        if (property != null) property.intValue = value;
     }
 
     static void SetFloat(SerializedObject so, string path, float value)
