@@ -223,7 +223,6 @@ namespace EinsteinTelescope.Lumi
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (Keyboard.current != null && Keyboard.current[testKey].isPressed) return true;
-            if (Gamepad.current != null && Gamepad.current.buttonNorth.isPressed) return true;   // PS5 Triangle / Xbox Y while play testing
 #endif
             XRController hand = XRController.rightHand;
             if (hand == null) return false;
