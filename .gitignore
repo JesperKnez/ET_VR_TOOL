@@ -44,6 +44,7 @@
 
 # Visual Studio cache directory
 .vs/
+.vscode
 
 # Gradle cache directory
 .gradle/
@@ -112,6 +113,13 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+ 
+# Apple
+.DS_Store
+
+# Local secrets (API keys): never commit/[Aa]ssets/_Project/Secrets//[Aa]ssets/_Project/Secrets.meta
+/[Aa]ssets/_Project/Secrets/
+/[Aa]ssets/_Project/Secrets.meta
 
 # Screenshots van ScreenshotToClipboard (F8/F9/F10)
 /Screenshots/
