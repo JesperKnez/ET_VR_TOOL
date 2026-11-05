@@ -123,6 +123,7 @@ namespace EinsteinTelescope.Laser
 
         public Transform Surface => surface != null ? surface : transform;
         public TargetType Type => targetType;
+        public bool FrontFaceOnly => frontFaceOnly;
         public float DetectorRadius => detectorRadius;
         public float CenteringTolerance => centeringTolerance;
         public float RequiredPowerFraction => requiredPowerFraction;

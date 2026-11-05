@@ -54,6 +54,7 @@ namespace EinsteinTelescope.Laser
 
         /// <summary>Where the spot is drawn in the view (local units), for tests.</summary>
         public Vector2 SpotPosition => spot != null ? new Vector2(spot.localPosition.x, spot.localPosition.y) : Vector2.zero;
+        public Transform Spot => spot;
         public string PositionLine => positionText != null ? positionText.text : string.Empty;
 
         public void SetTarget(LaserTarget newTarget, string newLabel)
