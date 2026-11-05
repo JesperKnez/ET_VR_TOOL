@@ -57,6 +57,22 @@ namespace EinsteinTelescope.Lumi
         /// <summary>A plain-text snapshot of the level for the AI tutor, or empty without a laser level.</summary>
         public string BuildStatusReport() => objective != null ? objective.BuildStatusReport() : string.Empty;
 
+        /// <summary>The laser level being played, or null without a laser level.</summary>
+        public LaserLevel CurrentLevel => levelManager != null ? levelManager.CurrentLevel : null;
+
+        /// <summary>A mirror of the current level by its display name (case-insensitive), or null.</summary>
+        public MirrorMount FindMirror(string displayName)
+        {
+            LaserLevel level = CurrentLevel;
+            if (level == null || string.IsNullOrWhiteSpace(displayName)) return null;
+            foreach (MirrorMount mirror in level.Mirrors)
+            {
+                if (mirror != null && string.Equals(mirror.DisplayName.Trim(), displayName.Trim(), System.StringComparison.OrdinalIgnoreCase))
+                    return mirror;
+            }
+            return null;
+        }
+
         private void Awake()
         {
             animator = GetComponentInChildren<Animator>();

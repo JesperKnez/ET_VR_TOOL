@@ -116,3 +116,7 @@ InitTestScene*.unity*
  
 # Apple
 .DS_Store
+
+# Local secrets (API keys): never commit/[Aa]ssets/_Project/Secrets//[Aa]ssets/_Project/Secrets.meta
+/[Aa]ssets/_Project/Secrets/
+/[Aa]ssets/_Project/Secrets.meta

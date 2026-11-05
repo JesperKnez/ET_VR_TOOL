@@ -191,6 +191,21 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1467623520}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623522}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623521}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623525}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623528}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1467623529}
   m_SourcePrefab: {fileID: 100100000, guid: 3e5ad767a26154600babf25e9d51a290, type: 3}
 --- !u!1 &1467623514 stripped
 GameObject:
@@ -288,6 +303,94 @@ MonoBehaviour:
   puzzledOnWarning: 1
   puzzledCooldown: 8
   searchSeconds: 10
+--- !u!114 &1467623521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66a9e46d3ab86471ba88b9857681b8e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiTutorDebugWindow
+  show: 1
+  fontSize: 15
+--- !u!114 &1467623522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c98eab93d106947f79bb72c8069f6a93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiTutor
+  config: {fileID: 11400000, guid: a6d8d69991e7d419f9b35d9467d6f8a8, type: 2}
+  wordsPerSecond: 2.5
+  pointSeconds: 2.5
+  onQuestion:
+    m_PersistentCalls:
+      m_Calls: []
+  onReply:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &1467623525
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a9505820ba17422e8fee46ef8fe41bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiVoice
+  config: {fileID: 11400000, guid: b866377df24594a13ba375df9dfbbbf6, type: 2}
+  volume: 1
+  fullVolumeDistance: 1.5
+  maxDistance: 12
+--- !u!114 &1467623528
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cee54bb5f51a94e4faab1bb4ffdd5477, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiMouth
+  head: {fileID: 0}
+  talkThresholds: {x: 0.08, y: 0.25, z: 0.5}
+  minFrameTime: 0.06
+  silentTalkRate: 7
+  idleSmileInterval: {x: 8, y: 16}
+  idleSmileSeconds: 1.5
+--- !u!114 &1467623529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467623514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ecd771ec5c654dd9aee98e9fc93e2cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Lumi.LumiListener
+  modelFile: ggml-tiny.en.bin
+  vocabularyHint: Lumi, laser, beam, mirror, lens, light, photon, reflection, interference, detector, Einstein Telescope, gravitational waves.
+  maxSeconds: 15
+  tailSeconds: 0.2
+  minSeconds: 0.3
+  silenceLevel: 0.002
+  testKey: 55
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
