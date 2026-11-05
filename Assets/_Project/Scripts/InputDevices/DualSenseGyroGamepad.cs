@@ -191,16 +191,25 @@ namespace EinsteinTelescope.Gamepads
 #endif
 
         /// <summary>
-        /// Puts this class under Unity's own layout name "DualSenseGamepadHID". Unity's matchers for the DualSense and
-        /// DualSense Edge (vendor 0x54C, product 0xCE6 / 0xDF2) point at that name, so they now create this device.
-        /// (Removing Unity's layout instead left the controller without any layout: "Cannot find control layout".)
-        /// Devices that already exist are re-created by the Input System when a layout they use is replaced.
+        /// Registers this layout next to Unity's own DualSense layout and makes it win: a matcher scores by how many
+        /// properties it checks, and this one also checks manufacturer and product, so it beats Unity's (interface,
+        /// vendor, product id). Unity's layout must stay registered: replacing or removing it broke the controller
+        /// (no layout found, or leftover flags from Unity's class causing InvalidCastExceptions).
         /// </summary>
         static void Register()
         {
-            InputSystem.RegisterLayout<DualSenseGyroGamepad>(UnityLayoutName);
+            // Put Unity's own class back under its name (an earlier version of this script had replaced it)
+            InputSystem.RegisterLayout<DualSenseGamepadHID>("DualSenseGamepadHID");
+            InputSystem.RegisterLayout<DualSenseGyroGamepad>();
+            foreach (int product in new[] { 0xCE6, 0xDF2 })   // DualSense, DualSense Edge
+            {
+                InputSystem.RegisterLayoutMatcher<DualSenseGyroGamepad>(new InputDeviceMatcher()
+                    .WithInterface("HID")
+                    .WithManufacturer("Sony.*")
+                    .WithProduct("DualSense.*")
+                    .WithCapability("vendorId", 0x54C)
+                    .WithCapability("productId", product));
+            }
         }
-
-        const string UnityLayoutName = "DualSenseGamepadHID";
     }
 }
