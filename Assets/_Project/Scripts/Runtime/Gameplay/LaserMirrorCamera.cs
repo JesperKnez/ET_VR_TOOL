@@ -542,6 +542,12 @@ namespace EinsteinTelescope.Laser
             }
 
             SetPlainBackground(view.mode == ViewMode.AlongBeam && m_GoalValid);
+            if (view.mode != ViewMode.Orbit && m_GoalValid && hasBeam)
+            {
+                UpdateArrowMap();
+            }
+
+            UpdatePictureFlip(view.mode == ViewMode.AlongBeam && m_GoalValid);
             UpdateGuide(view.mode);
         }
 
@@ -881,10 +887,10 @@ namespace EinsteinTelescope.Laser
             if (on)
             {
                 float w = m_GuideRoot.rect.width, h = m_GuideRoot.rect.height;
-                Vector3 goalView = feedCamera.WorldToViewportPoint(m_GuideGoal);
-                Vector3 dotView = feedCamera.WorldToViewportPoint(m_GuideLanding);
-                Vector3 beamView = feedCamera.WorldToViewportPoint(m_GuideBeamMid);
-                Vector3 edgeView = feedCamera.WorldToViewportPoint(m_GuideGoal + feedCamera.transform.right * m_GuideRingRadius);
+                Vector3 goalView = Shown(feedCamera.WorldToViewportPoint(m_GuideGoal));
+                Vector3 dotView = Shown(feedCamera.WorldToViewportPoint(m_GuideLanding));
+                Vector3 beamView = Shown(feedCamera.WorldToViewportPoint(m_GuideBeamMid));
+                Vector3 edgeView = Shown(feedCamera.WorldToViewportPoint(m_GuideGoal + feedCamera.transform.right * m_GuideRingRadius));
                 float ringPx = Mathf.Max(14f, Mathf.Abs(edgeView.x - goalView.x) * w);
 
                 Color goalLabel = m_GuideCentred ? goalReachedColor : goalColor;
@@ -970,13 +976,13 @@ namespace EinsteinTelescope.Laser
         }
 
         /// <summary>
-        /// How many presses of the yaw and pitch buttons (signed: + = ► and ▲) move the dot from where it lands to the
-        /// ring. One press tilts the mirror by one step about its own axes (same maths as MirrorMount); the reflected
-        /// beam turns twice as much, and the dot moves that angle times the distance to the goal, in the picture's plane.
+        /// How the outgoing beam turns for one step of yaw and one step of pitch (unfolded space). Measured instead of
+        /// calculated: tilt the mount by one step the way MirrorMount does (nominal * yaw * pitch), read where the coated
+        /// face then points, and put the mount back, all within this frame. Right for any hierarchy (mirrored parents, odd axes).
         /// </summary>
-        private bool TryComputeSteps(out Vector2 steps)
+        private bool MeasureAxes(out Vector3 yawTurn, out Vector3 pitchTurn)
         {
-            steps = Vector2.zero;
+            yawTurn = pitchTurn = Vector3.zero;
             if (m_GuideMirror == null || !m_GuideHasBeam || m_GuideSurface == null)
             {
                 return false;
@@ -984,10 +990,6 @@ namespace EinsteinTelescope.Laser
 
             float step = m_GuideMirror.CurrentStepDegrees;
             Transform mount = m_GuideMirror.transform;
-
-            // Measure instead of calculating: tilt the mount by one step the way MirrorMount does (nominal * yaw * pitch),
-            // read where the coated face then points, and put the mount back, all within this frame. This is right for any
-            // hierarchy (mirrored parents, odd axes).
             Quaternion saved = mount.localRotation;
             Quaternion yawRotation = Quaternion.AngleAxis(m_GuideMirror.ActualYaw, Vector3.up);
             Quaternion pitchRotation = Quaternion.AngleAxis(-m_GuideMirror.ActualPitch, Vector3.right);
@@ -1000,25 +1002,115 @@ namespace EinsteinTelescope.Laser
             mount.localRotation = saved;
 
             Vector3 outgoing = LaserOptics.Reflect(m_GuideIncoming, m_GuideNormal);
-            Vector3 yawOut = LaserOptics.Reflect(m_GuideIncoming, yawNormal);
-            Vector3 pitchOut = LaserOptics.Reflect(m_GuideIncoming, pitchNormal);
+            yawTurn = LaserOptics.Reflect(m_GuideIncoming, yawNormal) - outgoing;
+            pitchTurn = LaserOptics.Reflect(m_GuideIncoming, pitchNormal) - outgoing;
+            return true;
+        }
+
+        /// <summary>
+        /// Makes the arrow buttons mean "move the spot" on the camera view of the target (the dartboard on the monitor):
+        /// right arrow = right, up arrow = up, whichever mirror axis and direction does that. A mirror after this one
+        /// mirrors the picture, and a periscope mirror can even turn yaw into up/down, so a fixed "right = yaw +" felt
+        /// reversed for some mirrors. Only updated from a path that really reached the target (or the remembered one).
+        /// </summary>
+        private void UpdateArrowMap()
+        {
+            if (!m_FoldTrusted || m_GoalTarget == null || !MeasureAxes(out Vector3 yawTurn, out Vector3 pitchTurn))
+            {
+                return;
+            }
+
+            Vector3 boardRight = m_GoalTarget.Surface.right, boardUp = m_GoalTarget.Surface.up;
+            Vector3 yawReal = UnfoldDirectionBack(yawTurn), pitchReal = UnfoldDirectionBack(pitchTurn);
+            var a = new Vector2(Vector3.Dot(yawReal, boardRight), Vector3.Dot(yawReal, boardUp));
+            var b = new Vector2(Vector3.Dot(pitchReal, boardRight), Vector3.Dot(pitchReal, boardUp));
+
+            var map = new MirrorControlPanel.ArrowMap();
+            if (Mathf.Abs(a.x) * Mathf.Abs(b.y) >= Mathf.Abs(a.y) * Mathf.Abs(b.x))
+            {
+                map.Right = new Vector2(Mathf.Sign(a.x), 0f);   // yaw moves the spot sideways
+                map.Up = new Vector2(0f, Mathf.Sign(b.y));
+            }
+            else
+            {
+                map.Right = new Vector2(0f, Mathf.Sign(b.x));   // axes swapped (periscope)
+                map.Up = new Vector2(Mathf.Sign(a.y), 0f);
+            }
+
+            MirrorControlPanel.ArrowMaps[m_GuideMirror] = map;
+        }
+
+        /// <summary>
+        /// Close-up: the unfolded picture can be the mirror image of the dartboard (an odd number of mirrors in between).
+        /// Then the picture is flipped, so dot and arrows move the same way on both screens.
+        /// </summary>
+        private void UpdatePictureFlip(bool alongBeam)
+        {
+            bool flipX = false, flipY = false;
+            if (alongBeam && m_FoldTrusted && m_GoalTarget != null)
+            {
+                flipX = Vector3.Dot(UnfoldDirectionBack(feedCamera.transform.right), m_GoalTarget.Surface.right) < 0f;
+                flipY = Vector3.Dot(UnfoldDirectionBack(feedCamera.transform.up), m_GoalTarget.Surface.up) < 0f;
+            }
+
+            m_FlipX = flipX;
+            m_FlipY = flipY;
+            if (feedImage != null)
+            {
+                var rect = new Rect(flipX ? 1f : 0f, flipY ? 1f : 0f, flipX ? -1f : 1f, flipY ? -1f : 1f);
+                if (feedImage.uvRect != rect) feedImage.uvRect = rect;
+            }
+        }
+
+        private bool m_FlipX, m_FlipY, m_FoldTrusted;
+
+        /// <summary>A viewport point of the camera as it is shown (after the flip).</summary>
+        private Vector3 Shown(Vector3 viewport) => new Vector3(m_FlipX ? 1f - viewport.x : viewport.x, m_FlipY ? 1f - viewport.y : viewport.y, viewport.z);
+
+        /// <summary>Direction in the unfolded space back to the real direction at the target (the fold, undone).</summary>
+        private Vector3 UnfoldDirectionBack(Vector3 direction)
+        {
+            for (int i = m_Fold.Count - 1; i >= 0; i--)
+            {
+                Vector3 normal = m_Fold[i].PlaneNormal;
+                if (normal != Vector3.zero) direction -= 2f * Vector3.Dot(direction, normal) * normal;
+            }
+
+            return direction;
+        }
+
+        /// <summary>
+        /// How many presses of the right and up arrows (signed: negative = left / down) move the dot from where it lands
+        /// to the ring. One press tilts the mirror one step (see MeasureAxes and the arrow map); the dot moves that turn
+        /// times the distance to the goal.
+        /// </summary>
+        private bool TryComputeSteps(out Vector2 steps)
+        {
+            steps = Vector2.zero;
+            if (!MeasureAxes(out Vector3 yawTurn, out Vector3 pitchTurn))
+            {
+                return false;
+            }
 
             float lever = Vector3.Distance(m_BeamOrigin, m_GuideGoal);
             Vector3 right = feedCamera.transform.right;
             Vector3 up = feedCamera.transform.up;
-            var yawMove = new Vector2(Vector3.Dot(yawOut - outgoing, right), Vector3.Dot(yawOut - outgoing, up)) * lever;
-            var pitchMove = new Vector2(Vector3.Dot(pitchOut - outgoing, right), Vector3.Dot(pitchOut - outgoing, up)) * lever;
+            var yawMove = new Vector2(Vector3.Dot(yawTurn, right), Vector3.Dot(yawTurn, up)) * lever;
+            var pitchMove = new Vector2(Vector3.Dot(pitchTurn, right), Vector3.Dot(pitchTurn, up)) * lever;
+            MirrorControlPanel.ArrowMap map = MirrorControlPanel.MapFor(m_GuideMirror);
+            Vector2 rightMove = map.Right.x * yawMove + map.Right.y * pitchMove;   // what one right arrow does
+            Vector2 upMove = map.Up.x * yawMove + map.Up.y * pitchMove;            // what one up arrow does
             Vector3 missing = m_GuideGoal - m_GuideLanding;
             var need = new Vector2(Vector3.Dot(missing, right), Vector3.Dot(missing, up));
 
-            float det = yawMove.x * pitchMove.y - yawMove.y * pitchMove.x;
+            float det = rightMove.x * upMove.y - rightMove.y * upMove.x;
             if (Mathf.Abs(det) < 1e-12f)
             {
                 return false;
             }
 
-            steps.x = (need.x * pitchMove.y - need.y * pitchMove.x) / det;
-            steps.y = (yawMove.x * need.y - yawMove.y * need.x) / det;
+            steps.x = (need.x * upMove.y - need.y * upMove.x) / det;
+            steps.y = (rightMove.x * need.y - rightMove.y * need.x) / det;
             return true;
         }
 
@@ -1223,6 +1315,7 @@ namespace EinsteinTelescope.Laser
             tolerance = 0.01f;
             reached = false;
             m_GoalTarget = null;
+            m_FoldTrusted = false;
 
             m_Segments.Clear();
             var emitters = LaserEmitter.ActiveEmitters;
@@ -1302,6 +1395,7 @@ namespace EinsteinTelescope.Laser
             }
 
             m_GoalTarget = target;
+            m_FoldTrusted = reached || useCache;
             tolerance = target.CenteringTolerance;
 
             // The real positions (for the Beam path view) and the box round the path up to the target
