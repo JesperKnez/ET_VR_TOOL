@@ -14,7 +14,8 @@ static class PropMaterialPass
     internal static readonly string[] Folders =
     {
         "Assets/_Project/Models/Equipment", "Assets/_Project/Models/Clutter", "Assets/_Project/Models/Crane",
-        "Assets/_Project/Models/Ceiling", "Assets/_Project/Models/Strut"
+        "Assets/_Project/Models/Ceiling", "Assets/_Project/Models/Strut", "Assets/_Project/Models/Vacuum",
+        "Assets/_Project/Models/Pipe", "Assets/_Project/Models/ETP_CableKit"
     };
 
     internal static readonly string[] ExtraFiles = { "Assets/_Project/Models/Room/Desk.fbx" };
@@ -46,6 +47,11 @@ static class PropMaterialPass
                 if (asset is Mesh mesh)
                 {
                     text.AppendLine("  mesh " + mesh.name + ": " + mesh.vertexCount + " verts, uv0 " + (mesh.uv != null && mesh.uv.Length > 0) + ", uv1 " + (mesh.uv2 != null && mesh.uv2.Length > 0) + ", submeshes " + mesh.subMeshCount);
+                    for (int s = 0; s < mesh.subMeshCount && mesh.subMeshCount > 1; s++)
+                    {
+                        var sub = mesh.GetSubMesh(s);
+                        text.AppendLine("    sub " + s + ": " + sub.indexCount / 3 + " tris, bounds centre " + sub.bounds.center.ToString("F2") + " size " + sub.bounds.size.ToString("F2"));
+                    }
                 }
             }
 

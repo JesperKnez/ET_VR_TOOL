@@ -3,7 +3,22 @@ guid: bea854e8c491f3248b4ca80300566fd9
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_White
+    second: {fileID: 2100000, guid: b5a37322b4583c64abb2f35feb91749b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Brushed
+    second: {fileID: 2100000, guid: 16a602a96c9faa047b272c3fdcc0697e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Stainless
+    second: {fileID: 2100000, guid: d610b0c74bba8d047b7fff4a1cd0d06a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

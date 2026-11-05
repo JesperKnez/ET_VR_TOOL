@@ -20,7 +20,7 @@ static class PropMaterialLibrary
     const string TEX_DIR = "Assets/_Project/Textures/Props";
     const int SIZE = 512;
 
-    enum Finish { PowderCoat, Plastic, Rubber, Brushed, Polished, Galvanised, DarkMetal, Wood, Foam, Label, Emissive, Keep }
+    enum Finish { PowderCoat, Laminate, Plastic, Rubber, Brushed, Polished, Galvanised, DarkMetal, Wood, Foam, Label, Emissive, Keep }
 
     struct Rule
     {
@@ -46,11 +46,14 @@ static class PropMaterialLibrary
         if (n.Contains("galvanised")) return R(Finish.Galvanised, 0.5f, 0.9f, new Color(0.66f, 0.68f, 0.70f));
         if (n.Contains("chain") || n.Contains("wheel_hub")) return R(Finish.DarkMetal, 0.45f, 0.85f);
         if (n.Contains("rubber")) return R(Finish.Rubber, 0.2f, 0f, new Color(0.075f, 0.075f, 0.08f));
+        if (n.StartsWith("cable") || n.StartsWith("hose")) return R(Finish.Plastic, 0.38f);   // PVC sheath
+        if (n.Contains("insulation_alu")) return R(Finish.Brushed, 0.55f, 1f, new Color(0.82f, 0.83f, 0.84f));
         if (n.Contains("foam")) return R(Finish.Foam, 0.08f);
         if (n.Contains("plywood")) return R(Finish.Wood, 0.2f);
         if (n.Contains("label") || n.Contains("sticker")) return R(Finish.Label, 0.35f);
-        if (n.Contains("tabletop")) return R(Finish.Plastic, 0.42f, 0f, new Color(0.84f, 0.84f, 0.83f));   // HPL laminate
-        if (n.Contains("desk_stands")) return R(Finish.PowderCoat, 0.42f, 0f, new Color(0.70f, 0.71f, 0.72f));
+        // Desk (own model, clean UVs): light grey HPL top (RAL 7035, satin) on an anthracite powder-coated steel frame (RAL 7016)
+        if (n.Contains("tabletop")) return R(Finish.Laminate, 0.36f, 0f, new Color(0.80f, 0.82f, 0.80f));
+        if (n.Contains("desk_stands")) return R(Finish.PowderCoat, 0.45f, 0f, new Color(0.22f, 0.24f, 0.26f));
         if (n.Contains("plastic") || n.Contains("handle") || n.Contains("monitor frame") || n.Contains("wheelcover") || n.Contains("sensor") || n.Contains("controller"))
             return R(Finish.Plastic, 0.4f);
         return R(Finish.PowderCoat, 0.4f);   // Paint_*, Lift_*, Grating, Device, Rack, Battery, Button
@@ -74,8 +77,24 @@ static class PropMaterialLibrary
                 {
                     Rule rule = RuleFor(source.name);
                     if (rule.finish == Finish.Keep) continue;
-                    library[source.name] = MakeMaterial(source, rule, textures);
+                    library[source.name] = MakeMaterial(source.name, source.HasProperty("_BaseColor") ? source.GetColor("_BaseColor") : source.color, rule, textures);
                 }
+            }
+        }
+
+        // Models remapped by an earlier run no longer return their embedded materials: rebuild those from the
+        // remap list, with the colour the library material got from the FBX the first time.
+        foreach (string path in models)
+        {
+            var importer = AssetImporter.GetAtPath(path) as ModelImporter;
+            if (importer == null) continue;
+            foreach (var pair in importer.GetExternalObjectMap())
+            {
+                if (pair.Key.type != typeof(Material) || library.ContainsKey(pair.Key.name) || !(pair.Value is Material existing)) continue;
+                Rule rule = RuleFor(pair.Key.name);
+                if (rule.finish == Finish.Keep) continue;
+                Color original = existing.HasProperty("_SourceColor") ? existing.GetColor("_SourceColor") : existing.GetColor("_BaseColor");
+                library[pair.Key.name] = MakeMaterial(pair.Key.name, original, rule, textures);
             }
         }
 
@@ -119,9 +138,9 @@ static class PropMaterialLibrary
         }
     }
 
-    static Material MakeMaterial(Material source, Rule rule, Dictionary<string, Texture2D> tex)
+    static Material MakeMaterial(string name, Color sourceColour, Rule rule, Dictionary<string, Texture2D> tex)
     {
-        string path = MAT_DIR + "/M_Prop_" + Safe(source.name) + ".mat";
+        string path = MAT_DIR + "/M_Prop_" + Safe(name) + ".mat";
         var material = AssetDatabase.LoadAssetAtPath<Material>(path);
         Shader lit = Shader.Find("Universal Render Pipeline/Lit");
         if (material == null)
@@ -131,7 +150,7 @@ static class PropMaterialLibrary
         }
 
         material.shader = lit;
-        Color colour = rule.colour ?? (source.HasProperty("_BaseColor") ? source.GetColor("_BaseColor") : source.color);
+        Color colour = rule.colour ?? sourceColour;
         colour.a = 1f;
         material.SetColor("_BaseColor", colour);
         material.SetFloat("_Surface", 0f);
@@ -151,6 +170,7 @@ static class PropMaterialLibrary
         {
             Finish.PowderCoat => "PowderCoat",
             Finish.Plastic => "Plastic",
+            Finish.Laminate => "Plastic",
             Finish.Label => "Plastic",
             Finish.Rubber => "Rubber",
             Finish.Foam => "Rubber",
@@ -173,7 +193,7 @@ static class PropMaterialLibrary
         {
             bool metal = rule.metallic > 0.5f;
             material.SetTexture("_BaseMap", tex["T_Prop_" + family + "_Albedo"]);
-            bool flat = family == "PowderCoat" || family == "Plastic" || family == "Polished";   // big panels: stretched kit UVs turn bumps into blotches
+            bool flat = rule.finish == Finish.PowderCoat || rule.finish == Finish.Plastic || rule.finish == Finish.Laminate || rule.finish == Finish.Polished;   // big panels: stretched kit UVs turn bumps into blotches
             material.SetTexture("_BumpMap", flat ? null : tex["T_Prop_" + family + "_Normal"]);
             material.SetFloat("_BumpScale", rule.finish == Finish.Label ? 0.3f : 1f);
             if (!flat) material.EnableKeyword("_NORMALMAP");

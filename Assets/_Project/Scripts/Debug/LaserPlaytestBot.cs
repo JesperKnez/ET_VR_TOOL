@@ -570,6 +570,14 @@ public class LaserPlaytestBot : MonoBehaviour
         foreach (Transform target in targets)
         {
             if (!TryBounds(target, out Bounds bounds)) continue;
+            var used = new HashSet<string>();
+            foreach (Renderer r in target.GetComponentsInChildren<Renderer>())
+            {
+                var filter = r.GetComponent<MeshFilter>();
+                foreach (Material m in r.sharedMaterials) used.Add((filter && filter.sharedMesh ? filter.sharedMesh.name : r.GetType().Name) + ": " + (m ? m.name : "none"));
+            }
+
+            report.AppendLine("- " + target.name + " uses " + string.Join(", ", used));
             for (int side = 0; side < 2; side++)
             {
                 float yaw = side == 0 ? 35f : 215f;

@@ -3,7 +3,32 @@ guid: e2d40c804a653d44fbee33abb9c19b38
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cable_Black
+    second: {fileID: 2100000, guid: ce8922e104eb9c849bd947638587f738, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cable_Blue
+    second: {fileID: 2100000, guid: a35c5dfd7d6e87b4982dad50b5201d1c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cable_Red
+    second: {fileID: 2100000, guid: cded7fba3adeb1449a0cbf849a5ea499, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cable_White
+    second: {fileID: 2100000, guid: d7256f79d958ebd4a8a07851df9fd131, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cable_YellowGreen
+    second: {fileID: 2100000, guid: f37e1ce6bca7bd74794460c807d3228b, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
