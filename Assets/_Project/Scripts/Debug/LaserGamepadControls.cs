@@ -3,19 +3,19 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// PS5 (DualSense) of Xbox-controller om het laserspel te testen zonder met de rays te mikken.
-/// Maakt zichzelf aan bij Play (alleen in de editor en in development builds), dus niets in de scene nodig.
-/// Werkt naast Carlo's LaserDebugKeyboard.
-///   Linker stick   geselecteerde spiegel vloeiend kantelen (verder duwen = sneller)
-///   D-pad          één stap per druk (precies)
-///   L1 / R1        vorige / volgende spiegel
-///   Kruisje        fijn / grof
-///   Vierkantje     spiegel terug naar de beginstand
-///   Driehoekje     undo
-///   Rondje         sluiter van de laser
-///   Options        volgend level
-///   Create         briefing open / dicht
-///   L3             straalpad van het actieve level in de Console (diagnose)
+/// PS5 (DualSense) or Xbox controller for testing the laser game without aiming the rays.
+/// Creates itself on Play (only in the editor and in development builds), so nothing is needed in the scene.
+/// Works alongside Carlo's LaserDebugKeyboard.
+///   Left stick     tilt the selected mirror smoothly (push further = faster)
+///   D-pad          one step per press (precise)
+///   L1 / R1        previous / next mirror
+///   Cross          fine / coarse
+///   Square         mirror back to its start position
+///   Triangle       undo
+///   Circle         laser shutter
+///   Options        next level
+///   Create         open / close the briefing
+///   L3             beam path of the active level in the Console (diagnostics)
 /// </summary>
 public class LaserGamepadControls : MonoBehaviour
 {
@@ -40,7 +40,7 @@ public class LaserGamepadControls : MonoBehaviour
         var panel = MirrorControlPanel.FirstActive;
         if (pad == null || !panel) return;
 
-        // Stick: vloeiend, snelheid evenredig met hoe ver je duwt (vanaf de deadzone opnieuw vanaf 0)
+        // Stick: smooth, speed proportional to how far you push (starting again from 0 at the deadzone)
         Vector2 stick = pad.leftStick.ReadValue();
         float amount = Mathf.InverseLerp(DEADZONE, 1f, stick.magnitude);
         if (amount > 0f)
@@ -54,7 +54,7 @@ public class LaserGamepadControls : MonoBehaviour
             holding = false;
         }
 
-        // D-pad: losse stappen
+        // D-pad: single steps
         if (pad.dpad.left.wasPressedThisFrame) panel.NudgeYaw(-1);
         if (pad.dpad.right.wasPressedThisFrame) panel.NudgeYaw(1);
         if (pad.dpad.up.wasPressedThisFrame) panel.NudgePitch(1);
@@ -79,25 +79,25 @@ public class LaserGamepadControls : MonoBehaviour
         if (pad.leftStickButton.wasPressedThisFrame) LogBeam(levelManager.CurrentLevel);
     }
 
-    /// <summary>Schrijft het straalpad van het actieve level naar de Console: waar elk stuk eindigt en wat het raakt.</summary>
+    /// <summary>Writes the beam path of the active level to the Console: where each segment ends and what it hits.</summary>
     static void LogBeam(LaserLevel level)
     {
         if (!level || !level.Laser) return;
         var laser = level.Laser;
         var report = new System.Text.StringBuilder(
-            $"[Beam] {level.name}: laser op {laser.transform.position.ToString("F2")}, sluiter {(laser.IsShutterOpen ? "open" : "dicht")}\n");
+            $"[Beam] {level.name}: laser at {laser.transform.position.ToString("F2")}, shutter {(laser.IsShutterOpen ? "open" : "closed")}\n");
 
         var segments = laser.Segments;
         for (int i = 0; i < segments.Count; i++)
         {
             var s = segments[i];
-            string hit = "niets";
+            string hit = "nothing";
             if (s.HitCollider)
             {
                 var parent = s.HitCollider.transform.parent;
                 hit = (parent ? parent.name + " / " : "") + s.HitCollider.name;
             }
-            report.AppendLine($"  {i,2}: {s.Start.ToString("F2")} -> {s.End.ToString("F2")}  vermogen {s.Power:0.00}  raakt {hit}");
+            report.AppendLine($"  {i,2}: {s.Start.ToString("F2")} -> {s.End.ToString("F2")}  power {s.Power:0.00}  hits {hit}");
         }
         Debug.Log(report.ToString());
     }

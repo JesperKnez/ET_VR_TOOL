@@ -166,22 +166,25 @@ namespace EinsteinTelescope.Laser
                 }
                 else if (allDone)
                 {
-                    HintLine += " Press NEXT LEVEL to play again from level 1.";
+                    HintLine += " Press RESTART FROM LEVEL 1 to play again.";
                 }
                 else if (levelManager != null && levelManager.WaitsForPlayer)
                 {
-                    HintLine += " See the results card; press NEXT LEVEL to continue.";
+                    HintLine += " Press NEXT LEVEL to continue or RETRY to beat your time.";
                 }
 
                 color = goodColor;
                 return;
             }
 
-            if (levelManager != null && levelManager.IsBriefingOpen)
+            // Only while the timer has not started: as soon as the player moves a mirror the normal read-out returns,
+            // even if the briefing on the wall screen is still open.
+            if (objective != null && objective.IsWaitingToStart && levelManager != null && levelManager.IsBriefingOpen)
             {
                 State = ReadoutState.Briefing;
                 StatusLine = "READ THE BRIEFING";
-                HintLine = "Close the floating screen (X or START) to begin. The timer starts then. HELP on the pad opens it again.";
+                HintLine = "The briefing explains this level. The timer starts when you close it (X or START) or move a mirror. " +
+                           "HELP on the pad opens it again.";
                 color = neutralColor;
                 return;
             }
@@ -273,10 +276,26 @@ namespace EinsteinTelescope.Laser
             }
 
             State = ReadoutState.Holding;
-            float progress = objective != null ? objective.HoldProgress : 1f;
-            StatusLine = "ALIGNED - HOLD " + LaserText.Percent(progress);
-            HintLine = "Keep both spots inside the green circle.";
             color = goodColor;
+            if (objective == null)
+            {
+                StatusLine = "ALIGNED";
+                HintLine = "Keep every spot inside the green circle.";
+                return;
+            }
+
+            if (objective.IsWaitingToStart)
+            {
+                StatusLine = "ALIGNED";
+                HintLine = "Close the briefing (X or START) or move a mirror to start the timer.";
+                return;
+            }
+
+            float hold = objective.HoldSeconds;
+            float held = objective.HoldElapsedSeconds;
+            StatusLine = "ALIGNED - HOLD IT  " + LaserText.Number(held, 1) + " / " + LaserText.Number(hold, 1) + " s";
+            HintLine = "Hands off! Keep every spot inside the green circle: level complete in " +
+                       LaserText.Number(Mathf.Max(0f, hold - held), 1) + " s.";
         }
 
         private void BuildPowerAndBeams()

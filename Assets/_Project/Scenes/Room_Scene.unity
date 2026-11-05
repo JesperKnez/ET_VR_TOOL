@@ -593,6 +593,75 @@ Transform:
   - {fileID: 819718127}
   m_Father: {fileID: 53341364}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &27220052
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1884266870310644895, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: config
+      value: 
+      objectReference: {fileID: 11400000, guid: d75d0b7cea56f064d81fe19a6941043c, type: 2}
+    - target: {fileID: 2439572299010813094, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_Name
+      value: Lumi
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -10.396
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.537
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -9.635
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.8455572
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.53388476
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -64.537
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067174237943658012, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8420585346152453355, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: config
+      value: 
+      objectReference: {fileID: 11400000, guid: 01fe925c877b7774384a29792d0bffc2, type: 2}
+    - target: {fileID: 8966920211800370278, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: ff067f75fee7740cb88ba95f99898f81, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 7bc44f3f1858c444fb9b47586c2b2e8d, type: 3}
 --- !u!1001 &33420602
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1608,7 +1677,10 @@ MonoBehaviour:
   - {fileID: 1873795092}
   tabColor: {r: 0.1, g: 0.16, b: 0.23, a: 1}
   activeTabColor: {r: 0.16, g: 0.42, b: 0.62, a: 1}
+  useBuiltInTexts: 1
   controlsText: "<b>Control pad</b>  (point a controller ray at a button and pull the trigger, or click with the mouse)\n\u2022  PREV / NEXT: choose the mirror to steer. It gets a glowing ring, and the light coming off it turns cyan.\n\u2022  \u25B2 \u25BC tilt it up / down,  \u25C4 \u25BA tilt it left / right. Tap = one step, hold = keep moving.\n\u2022  Centre button: COARSE (0.5\xB0 per step) or FINE (0.05\xB0). Use FINE for the last centimetre.\n\u2022  RESET MIRROR: start angle.   SHUTTER: beam on / off.   LASER: green 532 nm or invisible infrared 1064 nm.\n\u2022  UNDO: take back your last move.   IR VIEWER: shows infrared light.   NEXT LEVEL: skip ahead.   HELP: this screen.\n<b>Thumbstick:</b> hold GRIP and push the stick to tilt the selected mirror. A / X = fine, B / Y = next mirror.\n\n<b>Monitor:</b> the circle shows where the beams hit the output detector (goal: within 1 cm of the centre). Four equal bars = centred, the text says what to do next. Above it: close-ups of the irises. Left of the pad: the view from the selected mirror.\n<b>Sound:</b> beeps get higher and faster as the beam nears the centre of the next target.\n<b>Keyboard:</b> arrows tilt,  ,  .  mirror,  /  fine,  U undo,  Backspace reset,  L shutter,  K laser,  I IR,  N next level,  H help,  T beeps."
+  objective: {fileID: 0}
+  minBodyFontSize: 19
   onOpened:
     m_PersistentCalls:
       m_Calls: []
@@ -8362,6 +8434,7 @@ GameObject:
   m_Component:
   - component: {fileID: 371988652}
   - component: {fileID: 371988653}
+  - component: {fileID: 371988654}
   m_Layer: 0
   m_Name: Briefing UI Camera
   m_TagString: Untagged
@@ -8435,6 +8508,50 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!114 &371988654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 371988651}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!1001 &376694465
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18328,6 +18445,7 @@ MonoBehaviour:
     Same rules as level 1: within 2 minutes and at most 1 safety incident for 3 stars.'
   controlsTip: 'PREV / NEXT cycles through 4 mirrors: Steering 1, Steering 2, End X, End Y. Beam walking: Steering mirror 1 centres the beam on Iris A, Steering mirror 2 on Iris B; repeat.'
   physicsText: "<b>1. A beam line has a position and a direction</b>\nTo put a beam on a fixed line you must set both, so you need two mirrors. That is why there are two steering mirrors and two irises.\n\n<b>2. Each mirror moves the spot on both irises</b>\n            \u0394x \u2248 2 \xB7 \u03B8 \xB7 L          (L = distance from the mirror to the iris)\n\u2022  Steering mirror 1 to Iris A:  L \u2248 1.9 m, one COARSE step moves the spot about 3.3 cm.\n\u2022  Steering mirror 2 to Iris B:  L \u2248 1.45 m, one COARSE step moves it about 2.5 cm.\nFINE steps are ten times smaller.\n\n<b>3. Beam walking</b>\nCentring Iris B with mirror 2 shifts the beam a little at Iris A, so you alternate: mirror 1 for Iris A, mirror 2 for Iris B, and repeat. Each round the errors get smaller, like solving two equations step by step.\n\n<b>4. The light hits these mirrors at 45\xB0</b>\nA left / right tilt still turns the beam by 2\u03B8, but an up / down tilt turns it by only about 1.4\u03B8 (2\u03B8 \xB7 cos 45\xB0)."
+  parTimeSeconds: 120
   laser: {fileID: 125457514}
   mirrors:
   - {fileID: 2121369656}
@@ -22273,6 +22391,7 @@ MonoBehaviour:
   briefing: {fileID: 57178329}
   showBriefingOnLevelStart: 1
   resultsCard: {fileID: 25741843}
+  showFloatingResultsCard: 0
   safetyMonitor: {fileID: 1188085124}
   beamCameras: {fileID: 3673044769101029267}
   onLevelStarted:
@@ -22310,7 +22429,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77225cadf4335ac89259665ad1888304, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Laser.InfraredViewerToggle
-  activeOnStart: 0
   onViewerChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -22330,8 +22448,10 @@ MonoBehaviour:
   - {fileID: 116673979}
   holdSeconds: 2
   startAutomatically: 0
+  startOnFirstMirrorMove: 1
   safetyMonitor: {fileID: 1188085124}
   parTimeSeconds: 120
+  threeStarMistakeLimit: 1
   twoStarMistakeLimit: 4
   onObjectiveStarted:
     m_PersistentCalls:
@@ -26979,7 +27099,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -31065,7 +31185,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8872931939743328576, guid: ebdfc251a7cd4e44c89bd36d0250699c, type: 3}
       propertyPath: m_StaticEditorFlags
-      value: 21
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: -8733407781720888235, guid: ebdfc251a7cd4e44c89bd36d0250699c, type: 3}
       propertyPath: m_ReceiveGI
@@ -31639,6 +31759,7 @@ MonoBehaviour:
     A safety incident is laser light hitting something it should not: a wall, a frame or the edge of an optic.'
   controlsTip: only the two end mirrors can be steered. Use COARSE steps to bring a beam onto the detector, then switch to FINE.
   physicsText: "<b>1. Law of reflection</b>\nA beam leaves a mirror at the same angle as it arrives:  angle in = angle out.\n\n<b>2. Tilt a mirror by \u03B8 and the beam turns by 2\u03B8</b>\nBoth angles change, so the turn is doubled. After a distance L the spot moves:\n            \u0394x \u2248 2 \xB7 \u03B8 \xB7 L          (\u03B8 in radians:  1\xB0 \u2248 0.0175 rad)\nEnd mirror X is L \u2248 3.7 m from the detector (2.5 m back to the splitter + 1.2 m to the detector). One COARSE step of 0.5\xB0 = 0.0087 rad moves the spot 2 \xD7 0.0087 \xD7 3.7 \u2248 6.5 cm. One FINE step moves it 6.5 mm. The goal is 1 cm, so the last part needs FINE steps.\n\n<b>3. The beam splitter</b>\nIt reflects half of the light and lets half through (50 / 50). The glass bends the light that goes through (Snell's law:  n1 \xB7 sin \u03B81 = n2 \xB7 sin \u03B82) and shifts it sideways by about 2.4 cm. That is why the detector is not exactly in the middle.\n\n<b>4. Why both beams must overlap</b>\nIn a real detector the two returning beams interfere. A gravitational wave changes the arm lengths by less than the width of a proton; only perfectly overlapping beams can show that."
+  parTimeSeconds: 120
   laser: {fileID: 1640499402}
   mirrors:
   - {fileID: 1891406447}
@@ -38312,6 +38433,7 @@ MonoBehaviour:
     3. Align End mirror X and End mirror Y until both beams land in the centre of the output detector.'
   controlsTip: 'The arms are long: use fine mode for the end mirrors. One coarse step moves the spot a long way.'
   physicsText: 'Einstein Telescope will have arms of 10 km. The longer the arm, the further the spot moves for the same tilt of a mirror, so the alignment has to be more precise. That same effect is what makes long arms so sensitive: a tiny change in length becomes measurable.'
+  parTimeSeconds: 240
   laser: {fileID: 1859213919}
   mirrors:
   - {fileID: 966596612}
@@ -42618,14 +42740,6 @@ MonoBehaviour:
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: IRIS
---- !u!222 &668172010494635784
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5972625183264583745}
-  m_CullTransparentMesh: 1
 --- !u!23 &680559388115417374
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -43102,36 +43216,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &1092249715407114599
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5972625183264583745}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!224 &1123939924413418424
 RectTransform:
   m_ObjectHideFlags: 0
@@ -44086,8 +44170,6 @@ RectTransform:
   - {fileID: 1797143686561782250}
   - {fileID: 5949122626863287995}
   - {fileID: 3177182732929572467}
-  - {fileID: 8799135854442104542}
-  - {fileID: 6733293839521571619}
   - {fileID: 1782344590}
   m_Father: {fileID: 546808721}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -45230,26 +45312,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 150, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &3173369715678083821
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6733293839521571619}
-  - component: {fileID: 4094909814140628508}
-  - component: {fileID: 4050050140347761477}
-  - component: {fileID: 5503063538206272390}
-  - component: {fileID: 7203486615578734023}
-  m_Layer: 8
-  m_Name: IR Viewer
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!224 &3177182732929572467
 RectTransform:
   m_ObjectHideFlags: 0
@@ -45267,7 +45329,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -71, y: -268}
+  m_AnchoredPosition: {x: 71, y: -268}
   m_SizeDelta: {x: 132, y: 72}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &3179025756428782157
@@ -45424,24 +45486,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6495905609795141904}
   m_CullTransparentMesh: 1
---- !u!1 &3347152767392781464
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3752303158189449337}
-  - component: {fileID: 7046272614388148567}
-  - component: {fileID: 6697696150867207512}
-  m_Layer: 8
-  m_Name: Label
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!224 &3354580067107243334
 RectTransform:
   m_ObjectHideFlags: 0
@@ -45968,33 +46012,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8980849625434869285}
   m_CullTransparentMesh: 1
---- !u!224 &3752303158189449337
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3347152767392781464}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 6733293839521571619}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 132, y: 72}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &3791053778922482504
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9032163335355790052}
-  m_CullTransparentMesh: 1
 --- !u!1 &3801749220030568388
 GameObject:
   m_ObjectHideFlags: 0
@@ -46061,7 +46078,13 @@ MonoBehaviour:
   beamWidthPixels: 3
   renderEveryNthFrame: 2
   views:
-  - name: Along beam
+  - name: Whole path
+    mode: 2
+    distance: 0
+    elevation: 35
+    sideAngle: 90
+    fieldOfView: 40
+  - name: Close-up
     mode: 1
     distance: 0
     elevation: 0
@@ -46088,6 +46111,10 @@ MonoBehaviour:
   hideInFeed: []
   towerAlphaInFeed: 0.05
   hideOtherBeams: 0
+  cameraLimitMin: {x: -16.5, y: 0.5, z: -10.5}
+  cameraLimitMax: {x: 16.5, y: 7.5, z: 10.5}
+  showGuide: 1
+  showHintText: 0
   chaseOffset: 0.08
 --- !u!114 &3820801090280062866
 MonoBehaviour:
@@ -46180,50 +46207,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8338245858354466063}
   m_CullTransparentMesh: 1
---- !u!114 &3899727358331660228
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5972625183264583745}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
-  m_Navigation:
-    m_Mode: 0
-    m_WrapAround: 0
-    m_SelectOnUp: {fileID: 0}
-    m_SelectOnDown: {fileID: 0}
-    m_SelectOnLeft: {fileID: 0}
-    m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
-  m_Colors:
-    m_NormalColor: {r: 0.13, g: 0.2, b: 0.28, a: 1}
-    m_HighlightedColor: {r: 0.2, g: 0.42, b: 0.6, a: 1}
-    m_PressedColor: {r: 0.25, g: 0.85, b: 0.45, a: 1}
-    m_SelectedColor: {r: 0.13, g: 0.2, b: 0.28, a: 1}
-    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
-    m_ColorMultiplier: 1
-    m_FadeDuration: 0.05
-  m_SpriteState:
-    m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: 0}
-    m_SelectedSprite: {fileID: 0}
-    m_DisabledSprite: {fileID: 0}
-  m_AnimationTriggers:
-    m_NormalTrigger: Normal
-    m_HighlightedTrigger: Highlighted
-    m_PressedTrigger: Pressed
-    m_SelectedTrigger: Selected
-    m_DisabledTrigger: Disabled
-  m_Interactable: 1
-  m_TargetGraphic: {fileID: 1092249715407114599}
-  m_OnClick:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!224 &3938411219716011502
 RectTransform:
   m_ObjectHideFlags: 0
@@ -46359,36 +46342,6 @@ MonoBehaviour:
   action: 5
   pad: {fileID: 0}
   holdDelaySeconds: 0.35
---- !u!114 &4050050140347761477
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3173369715678083821}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!224 &4065399174984618807
 RectTransform:
   m_ObjectHideFlags: 0
@@ -46463,14 +46416,6 @@ MonoBehaviour:
   m_Text: 'BEAM 1  ---
 
     BEAM 2  ---'
---- !u!222 &4094909814140628508
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3173369715678083821}
-  m_CullTransparentMesh: 1
 --- !u!224 &4113601036945152567
 RectTransform:
   m_ObjectHideFlags: 0
@@ -46616,40 +46561,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1615477852669959405}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4258183770849137195
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9032163335355790052}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.85, g: 0.93, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 19
-    m_FontStyle: 0
-    m_BestFit: 0
-    m_MinSize: 10
-    m_MaxSize: 40
-    m_Alignment: 4
-    m_AlignByGeometry: 0
-    m_RichText: 1
-    m_HorizontalOverflow: 1
-    m_VerticalOverflow: 1
-    m_LineSpacing: 1
-  m_Text: LASER
 --- !u!114 &4268631979469623356
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -46733,8 +46644,8 @@ MonoBehaviour:
   stepModeText: {fileID: 2547529060649661017}
   anglesText: {fileID: 9108983785452000237}
   shutterText: {fileID: 1220713677003340019}
-  infraredText: {fileID: 6697696150867207512}
-  wavelengthText: {fileID: 4258183770849137195}
+  infraredText: {fileID: 0}
+  wavelengthText: {fileID: 0}
   levelText: {fileID: 2183679946007724715}
 --- !u!1 &4345054932452686771
 GameObject:
@@ -47191,25 +47102,6 @@ MonoBehaviour:
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: IRIS
---- !u!224 &4803828120724311383
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9032163335355790052}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 8799135854442104542}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 132, y: 72}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &4805845763746793145
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47695,50 +47587,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8995397146052835511}
   m_CullTransparentMesh: 1
---- !u!114 &5503063538206272390
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3173369715678083821}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
-  m_Navigation:
-    m_Mode: 0
-    m_WrapAround: 0
-    m_SelectOnUp: {fileID: 0}
-    m_SelectOnDown: {fileID: 0}
-    m_SelectOnLeft: {fileID: 0}
-    m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
-  m_Colors:
-    m_NormalColor: {r: 0.13, g: 0.2, b: 0.28, a: 1}
-    m_HighlightedColor: {r: 0.2, g: 0.42, b: 0.6, a: 1}
-    m_PressedColor: {r: 0.25, g: 0.85, b: 0.45, a: 1}
-    m_SelectedColor: {r: 0.13, g: 0.2, b: 0.28, a: 1}
-    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
-    m_ColorMultiplier: 1
-    m_FadeDuration: 0.05
-  m_SpriteState:
-    m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: 0}
-    m_SelectedSprite: {fileID: 0}
-    m_DisabledSprite: {fileID: 0}
-  m_AnimationTriggers:
-    m_NormalTrigger: Normal
-    m_HighlightedTrigger: Highlighted
-    m_PressedTrigger: Pressed
-    m_SelectedTrigger: Selected
-    m_DisabledTrigger: Disabled
-  m_Interactable: 1
-  m_TargetGraphic: {fileID: 4050050140347761477}
-  m_OnClick:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1 &5524378133608102426
 GameObject:
   m_ObjectHideFlags: 0
@@ -48255,29 +48103,9 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -213, y: -268}
+  m_AnchoredPosition: {x: -71, y: -268}
   m_SizeDelta: {x: 132, y: 72}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &5972625183264583745
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8799135854442104542}
-  - component: {fileID: 668172010494635784}
-  - component: {fileID: 1092249715407114599}
-  - component: {fileID: 3899727358331660228}
-  - component: {fileID: 8354783878050302053}
-  m_Layer: 8
-  m_Name: Laser Wavelength
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!23 &6025820504675078512
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -48981,40 +48809,6 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &6697696150867207512
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3347152767392781464}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.85, g: 0.93, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 19
-    m_FontStyle: 0
-    m_BestFit: 0
-    m_MinSize: 10
-    m_MaxSize: 40
-    m_Alignment: 4
-    m_AlignByGeometry: 0
-    m_RichText: 1
-    m_HorizontalOverflow: 1
-    m_VerticalOverflow: 1
-    m_LineSpacing: 1
-  m_Text: IR VIEWER
 --- !u!114 &6719872088835729330
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49057,26 +48851,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3095482136520157589}
   m_CullTransparentMesh: 1
---- !u!224 &6733293839521571619
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3173369715678083821}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 3752303158189449337}
-  m_Father: {fileID: 2123264009375707503}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 213, y: -268}
-  m_SizeDelta: {x: 132, y: 72}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6740685683043416568
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -49245,14 +49019,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7066334673272737096}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!222 &7046272614388148567
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3347152767392781464}
-  m_CullTransparentMesh: 1
 --- !u!23 &7066249624224010080
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -49391,21 +49157,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &7203486615578734023
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3173369715678083821}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1fe8022d932b5d11be16c1eef6972e1a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Laser.LaserPadButton
-  action: 9
-  pad: {fileID: 0}
-  holdDelaySeconds: 0.35
 --- !u!222 &7204808189490655903
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -50520,21 +50271,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &8354783878050302053
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5972625183264583745}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1fe8022d932b5d11be16c1eef6972e1a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EinsteinTelescope.Laser.LaserPadButton
-  action: 10
-  pad: {fileID: 0}
-  holdDelaySeconds: 0.35
 --- !u!222 &8386688951597788019
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -50807,26 +50543,6 @@ MonoBehaviour:
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: ---
---- !u!224 &8799135854442104542
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5972625183264583745}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 4803828120724311383}
-  m_Father: {fileID: 2123264009375707503}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 71, y: -268}
-  m_SizeDelta: {x: 132, y: 72}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!23 &8830775981753840092
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -51110,24 +50826,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &9032163335355790052
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4803828120724311383}
-  - component: {fileID: 3791053778922482504}
-  - component: {fileID: 4258183770849137195}
-  m_Layer: 8
-  m_Name: Label
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!1001 &9048885031971801620
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -51350,3 +51048,4 @@ SceneRoots:
   - {fileID: 1596179082}
   - {fileID: 523453355}
   - {fileID: 2007577960}
+  - {fileID: 27220052}

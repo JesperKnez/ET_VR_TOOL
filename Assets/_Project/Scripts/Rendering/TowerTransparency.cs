@@ -4,12 +4,12 @@ using EinsteinTelescope.Laser;
 using UnityEngine;
 
 /// <summary>
-/// Maakt de torens doorzichtig (bijv. in level 1, zodat je de optics erin ziet).
-/// Zelfde PBR-materiaal, alleen een lagere alpha: elk opaque materiaal heeft een "_Clear"-tweeling
-/// (Surface Type Transparent) die Tools > Einstein Telescope > Torens aanmaakt.
-/// Tijdens het faden gebruiken de renderers kopieën van die tweelingen; is de toren weer helemaal
-/// dicht, dan gaan de originele opaque materialen terug (goedkoper en geen sorteerproblemen).
-/// Zet dit op de root van TowerConstellation.
+/// Makes the towers see-through (e.g. in level 1, so you can see the optics inside).
+/// Same PBR material, just a lower alpha: every opaque material has a "_Clear" twin
+/// (Surface Type Transparent) that Tools > Einstein Telescope > Towers creates.
+/// While fading, the renderers use copies of those twins; once the tower is fully
+/// opaque again, the original opaque materials go back (cheaper and no sorting problems).
+/// Put this on the root of TowerConstellation.
 /// </summary>
 public class TowerTransparency : MonoBehaviour
 {
@@ -23,20 +23,20 @@ public class TowerTransparency : MonoBehaviour
     public MaterialPair[] materials = new MaterialPair[0];
 
     [Range(0f, 1f)] public float clearAlpha = 0.25f;
-    [Tooltip("Seconden voor een fade van helemaal dicht naar helemaal open")]
+    [Tooltip("Seconds for a fade from fully opaque to fully see-through")]
     public float fadeTime = 1.5f;
 
-    [Header("Optioneel: automatisch per level")]
+    [Header("Optional: automatic per level")]
     public LaserLevelManager levelManager;
-    [Tooltip("Levelnummers (1 = eerste level) waarin de torens doorzichtig zijn")]
+    [Tooltip("Level numbers (1 = first level) in which the towers are see-through")]
     public int[] clearInLevels = { 1 };
 
     static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
     static readonly int Cutoff = Shader.PropertyToID("_Cutoff");
 
     Renderer[] renderers;
-    readonly Dictionary<Material, Material> toClear = new();   // opaque asset → clear-kopie
-    readonly Dictionary<Material, Material> toOpaque = new();  // clear-kopie → opaque asset
+    readonly Dictionary<Material, Material> toClear = new();   // opaque asset → clear copy
+    readonly Dictionary<Material, Material> toOpaque = new();  // clear copy → opaque asset
     readonly List<(Material mat, Color color, float cutoff)> clearInstances = new();
     float alpha = 1f, target = 1f;
     bool usingClear;
@@ -49,7 +49,7 @@ public class TowerTransparency : MonoBehaviour
         foreach (var pair in materials)
         {
             if (pair == null || !pair.opaque || !pair.clear) continue;
-            // Kopie, zodat het .mat-bestand in de editor niet mee verandert
+            // Copy, so the .mat file in the editor does not change along with it
             var instance = new Material(pair.clear) { name = pair.clear.name + " (runtime)" };
             toClear[pair.opaque] = instance;
             toOpaque[instance] = pair.opaque;
@@ -74,15 +74,15 @@ public class TowerTransparency : MonoBehaviour
             if (c.mat) Destroy(c.mat);
     }
 
-    // De level manager telt vanaf 0, clearInLevels vanaf 1
+    // The level manager counts from 0, clearInLevels from 1
     void OnLevelStarted(int index) => SetClear(Array.IndexOf(clearInLevels, index + 1) >= 0);
 
-    /// <summary>Fade naar doorzichtig (true) of dicht (false). Ook bruikbaar vanuit een UnityEvent.</summary>
+    /// <summary>Fade to see-through (true) or opaque (false). Also usable from a UnityEvent.</summary>
     public void SetClear(bool clear) => target = clear ? clearAlpha : 1f;
 
     public void ToggleClear() => SetClear(!IsClear);
 
-    /// <summary>Zelfde als SetClear, maar zonder fade.</summary>
+    /// <summary>Same as SetClear, but without a fade.</summary>
     public void SetClearImmediate(bool clear)
     {
         SetClear(clear);
@@ -110,7 +110,7 @@ public class TowerTransparency : MonoBehaviour
         foreach (var (mat, color, cutoff) in clearInstances)
         {
             mat.SetColor(BaseColor, new Color(color.r, color.g, color.b, color.a * alpha));
-            // Alpha clip (bouten): drempel mee omlaag, anders knipt een lage alpha alles weg
+            // Alpha clip (bolts): lower the threshold too, otherwise a low alpha clips everything away
             if (mat.HasProperty(Cutoff)) mat.SetFloat(Cutoff, cutoff * alpha);
         }
     }

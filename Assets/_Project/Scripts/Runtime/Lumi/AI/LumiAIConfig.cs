@@ -36,5 +36,14 @@ namespace EinsteinTelescope.Lumi
         public int TimeoutSeconds => timeoutSeconds;
         public int HistoryTurns => historyTurns;
         public bool HasKey => !string.IsNullOrWhiteSpace(apiKey);
+
+        /// <summary>True for a local server (e.g. Ollama), which needs no API key.</summary>
+        public bool IsLocalEndpoint =>
+            endpoint != null &&
+            (endpoint.StartsWith("http://localhost", System.StringComparison.OrdinalIgnoreCase) ||
+             endpoint.StartsWith("http://127.0.0.1", System.StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Lumi can go online: either there is a key, or the endpoint is local.</summary>
+        public bool CanGoOnline => HasKey || IsLocalEndpoint;
     }
 }

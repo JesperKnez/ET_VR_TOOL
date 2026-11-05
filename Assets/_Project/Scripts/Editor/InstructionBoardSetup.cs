@@ -6,7 +6,7 @@ using UnityEngine;
 namespace EinsteinTelescope.Props.Editor
 {
     /// <summary>
-    /// Menu: Tools > Einstein Telescope > Instructiebord > Briefing op bord zetten.
+    /// Menu: Tools > Einstein Telescope > Instruction board > Put briefing on board.
     /// Puts the existing laser briefing (LaserBriefingPanel, "Briefing Screen (floating)") exactly on the
     /// screen of the wall TV (InstructionBoard_Screen) and gives that screen a dark background.
     /// Nothing else changes: the level manager, HELP and the X/START buttons open and close the briefing as before.
@@ -19,32 +19,32 @@ namespace EinsteinTelescope.Props.Editor
         private const float Fill = 0.98f;          // share of the screen the briefing uses
         private const float SurfaceOffset = 0.004f; // canvas in front of the screen (m), avoids z-fighting
 
-        [MenuItem("Tools/Einstein Telescope/Instructiebord/Briefing op bord zetten")]
+        [MenuItem("Tools/Einstein Telescope/Instruction board/Put briefing on board")]
         public static void FitBriefingToBoard()
         {
             MeshRenderer screen = FindScreen();
             if (screen == null)
             {
-                EditorUtility.DisplayDialog("Instructiebord",
-                    "Geen '" + ScreenName + "' gevonden in de scene.\nZet ET_ControlRoom_Props in de scene (of selecteer de TV) en probeer opnieuw.", "OK");
+                EditorUtility.DisplayDialog("Instruction board",
+                    "No '" + ScreenName + "' found in the scene.\nPut ET_ControlRoom_Props in the scene (or select the TV) and try again.", "OK");
                 return;
             }
 
             LaserBriefingPanel briefing = FindBriefing();
             if (briefing == null)
             {
-                EditorUtility.DisplayDialog("Instructiebord",
-                    "Geen LaserBriefingPanel in deze scene. Zet eerst de laser-demo / Carlo's prefabs in de scene.", "OK");
+                EditorUtility.DisplayDialog("Instruction board",
+                    "No LaserBriefingPanel in this scene. Put the laser demo / Carlo's prefabs in the scene first.", "OK");
                 return;
             }
 
             if (!ScreenFrame(screen, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size))
             {
-                EditorUtility.DisplayDialog("Instructiebord", "Kon de vorm van het scherm niet lezen (mesh niet leesbaar?).", "OK");
+                EditorUtility.DisplayDialog("Instruction board", "Could not read the shape of the screen (mesh not readable?).", "OK");
                 return;
             }
 
-            Undo.SetCurrentGroupName("Briefing in de TV");
+            Undo.SetCurrentGroupName("Briefing on the TV");
             int group = Undo.GetCurrentGroup();
 
             // 1. Briefing root onto the screen. Canvas front faces -Z, so its forward points into the wall.
@@ -66,6 +66,21 @@ namespace EinsteinTelescope.Props.Editor
                 canvasRect.localScale = Vector3.one * (scale / parentScale);
             }
 
+            // 2b. Two pages now (objective, controls): hide the old physics tab and centre the other tabs.
+            //     The panel does the same at runtime; doing it here keeps the Scene view honest.
+            SerializedProperty tabs = so.FindProperty("tabImages");
+            for (int i = 0; tabs != null && i < tabs.arraySize; i++)
+            {
+                var tab = tabs.GetArrayElementAtIndex(i).objectReferenceValue as UnityEngine.UI.Image;
+                if (tab != null)
+                {
+                    Undo.RecordObject(tab.rectTransform, "Briefing tabs");
+                    Undo.RecordObject(tab.gameObject, "Briefing tabs");
+                }
+            }
+
+            briefing.ApplyTabLayout();
+
             // 3. Dark TV screen behind the briefing (also what you see while the briefing is closed).
             Material dark = FindMaterial(DarkScreenMaterial);
             if (dark != null)
@@ -77,7 +92,7 @@ namespace EinsteinTelescope.Props.Editor
             Undo.CollapseUndoOperations(group);
             EditorSceneManager.MarkSceneDirty(screen.gameObject.scene);
             Selection.activeGameObject = briefing.gameObject;
-            Debug.Log($"Instructiebord: briefing in de TV gezet ({size.x:0.00} x {size.y:0.00} m).", briefing);
+            Debug.Log($"Instruction board: briefing put on the TV ({size.x:0.00} x {size.y:0.00} m).", briefing);
         }
 
         private const string BriefingLayerName = "BriefingUI";
@@ -92,16 +107,16 @@ namespace EinsteinTelescope.Props.Editor
         /// distance, the GPU skips texels and the text shimmers. In a mipmapped RenderTexture the same text is filtered.
         /// The canvas itself stays exactly where it is (so the XR rays still hit the BACK/NEXT buttons) but moves to its own
         /// layer that the player's cameras do not draw; a camera in front of it renders it into the texture, and the TV shows
-        /// that texture. Run it again after 'Briefing op bord zetten'. Undo (Ctrl+Z) reverts most of it.
+        /// that texture. Run it again after 'Put briefing on board'. Undo (Ctrl+Z) reverts most of it.
         /// </summary>
-        [MenuItem("Tools/Einstein Telescope/Instructiebord/Briefing via render texture (rustige tekst)")]
+        [MenuItem("Tools/Einstein Telescope/Instruction board/Briefing via render texture (calm text)")]
         public static void BriefingViaRenderTexture()
         {
             MeshRenderer screen = FindScreen();
             LaserBriefingPanel briefing = FindBriefing();
             if (screen == null || briefing == null)
             {
-                EditorUtility.DisplayDialog("Instructiebord", "TV-scherm of briefing niet gevonden. Draai eerst 'Briefing op bord zetten'.", "OK");
+                EditorUtility.DisplayDialog("Instruction board", "TV screen or briefing not found. Run 'Put briefing on board' first.", "OK");
                 return;
             }
 
@@ -111,7 +126,7 @@ namespace EinsteinTelescope.Props.Editor
             var canvas = screenObject != null ? screenObject.GetComponentInParent<Canvas>(true) : null;
             if (canvasRect == null || canvas == null)
             {
-                EditorUtility.DisplayDialog("Instructiebord", "De briefing heeft geen canvas.", "OK");
+                EditorUtility.DisplayDialog("Instruction board", "The briefing has no canvas.", "OK");
                 return;
             }
 
@@ -202,7 +217,7 @@ namespace EinsteinTelescope.Props.Editor
             if (material == null)
             {
                 var shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) { Debug.LogError("URP/Unlit shader niet gevonden."); return; }
+                if (shader == null) { Debug.LogError("URP/Unlit shader not found."); return; }
                 material = new Material(shader);
                 AssetDatabase.CreateAsset(material, BriefingMatPath);
             }
@@ -218,7 +233,7 @@ namespace EinsteinTelescope.Props.Editor
             AssetDatabase.SaveAssets();
             Undo.CollapseUndoOperations(group);
             EditorSceneManager.MarkSceneDirty(screen.gameObject.scene);
-            Debug.Log($"Instructiebord: briefing via render texture ({rtWidth}x{rtHeight}, mipmaps, aniso 8). Canvas op layer '{BriefingLayerName}', glyph-resolutie {(scaler != null ? scaler.dynamicPixelsPerUnit : 0f):0.00}. {uvNote} Sla de scene op.", briefing);
+            Debug.Log($"Instruction board: briefing via render texture ({rtWidth}x{rtHeight}, mipmaps, aniso 8). Canvas on layer '{BriefingLayerName}', glyph resolution {(scaler != null ? scaler.dynamicPixelsPerUnit : 0f):0.00}. {uvNote} Save the scene.", briefing);
         }
 
         /// <summary>Flips the texture when the TV mesh's UVs run against the screen's right/up, so text is not mirrored or upside down.</summary>
@@ -228,7 +243,7 @@ namespace EinsteinTelescope.Props.Editor
             Mesh mesh = filter != null ? filter.sharedMesh : null;
             if (mesh == null || mesh.uv.Length != mesh.vertexCount || mesh.vertexCount < 3 || !ScreenFrame(screen, out _, out Vector3 normal, out Vector3 up, out _))
             {
-                return "(UV's niet gelezen, controleer of de tekst goed staat.)";
+                return "(UVs not read, check that the text is the right way round.)";
             }
 
             Vector3 right = Vector3.Cross(up, -normal);
@@ -261,7 +276,7 @@ namespace EinsteinTelescope.Props.Editor
 
             if (Mathf.Abs(uR) < Mathf.Abs(uA) || Mathf.Abs(vA) < Mathf.Abs(vR))
             {
-                return "WAARSCHUWING: de UV's van de TV staan 90 graden gedraaid, de tekst staat waarschijnlijk op zijn kant.";
+                return "WARNING: the TV's UVs are rotated 90 degrees, the text is probably on its side.";
             }
 
             float rangeU = Mathf.Max(1e-5f, maxU - minU), rangeV = Mathf.Max(1e-5f, maxV - minV);
@@ -271,7 +286,7 @@ namespace EinsteinTelescope.Props.Editor
             Vector2 offset = new Vector2(flipU ? maxU / rangeU : -minU / rangeU, flipV ? maxV / rangeV : -minV / rangeV);
             material.SetTextureScale("_BaseMap", scale);
             material.SetTextureOffset("_BaseMap", offset);
-            return $"UV: {(flipU ? "horizontaal gespiegeld, " : "")}{(flipV ? "verticaal gespiegeld, " : "")}bereik {rangeU:0.00} x {rangeV:0.00}.";
+            return $"UV: {(flipU ? "mirrored horizontally, " : "")}{(flipV ? "mirrored vertically, " : "")}range {rangeU:0.00} x {rangeV:0.00}.";
         }
 
         // The XR ray interactors only hit canvases on the layers in their Raycast Mask. In the Starter Assets rig that mask is
@@ -299,7 +314,7 @@ namespace EinsteinTelescope.Props.Editor
             {
                 if (!string.IsNullOrEmpty(target.stringValue))
                 {
-                    throw new System.Exception($"Layer {BriefingLayerIndex} is al in gebruik ('{target.stringValue}').");
+                    throw new System.Exception($"Layer {BriefingLayerIndex} is already in use ('{target.stringValue}').");
                 }
 
                 target.stringValue = BriefingLayerName;
@@ -335,7 +350,7 @@ namespace EinsteinTelescope.Props.Editor
                 }
             }
 
-            throw new System.Exception("Geen vrije layer meer over.");
+            throw new System.Exception("No free layer left.");
         }
 
         private static void EnsureFolder(string path)
@@ -367,13 +382,13 @@ namespace EinsteinTelescope.Props.Editor
         // but more shimmering text, lower it for softer and calmer text.
         private const float GlyphPixelsPerMetre = 700f;
 
-        [MenuItem("Tools/Einstein Telescope/Instructiebord/Tekst rustig maken (glyph-resolutie)")]
+        [MenuItem("Tools/Einstein Telescope/Instruction board/Calm text (glyph resolution)")]
         public static void SettleText()
         {
             LaserBriefingPanel briefing = FindBriefing();
             if (briefing == null)
             {
-                EditorUtility.DisplayDialog("Instructiebord", "Geen LaserBriefingPanel in deze scene.", "OK");
+                EditorUtility.DisplayDialog("Instruction board", "No LaserBriefingPanel in this scene.", "OK");
                 return;
             }
 
@@ -382,18 +397,18 @@ namespace EinsteinTelescope.Props.Editor
             var scaler = canvas != null ? canvas.GetComponent<UnityEngine.UI.CanvasScaler>() : null;
             if (scaler == null)
             {
-                EditorUtility.DisplayDialog("Instructiebord", "Geen Canvas met CanvasScaler gevonden bij de briefing.", "OK");
+                EditorUtility.DisplayDialog("Instruction board", "No Canvas with a CanvasScaler found on the briefing.", "OK");
                 return;
             }
 
-            float metresPerUnit = canvas.transform.lossyScale.x;   // run 'Briefing op bord zetten' first: that sets this scale
+            float metresPerUnit = canvas.transform.lossyScale.x;   // run 'Put briefing on board' first: that sets this scale
             float value = Mathf.Clamp(GlyphPixelsPerMetre * metresPerUnit, 0.3f, 3f);
             Undo.RecordObject(scaler, "Briefing glyph resolution");
             float before = scaler.dynamicPixelsPerUnit;
             scaler.dynamicPixelsPerUnit = value;
             EditorUtility.SetDirty(scaler);
             EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
-            Debug.Log($"Instructiebord: Dynamic Pixels Per Unit {before:0.00} -> {value:0.00} ({metresPerUnit * 1000f:0.00} mm per canvas-eenheid, {GlyphPixelsPerMetre:0} px/m).", canvas);
+            Debug.Log($"Instruction board: Dynamic Pixels Per Unit {before:0.00} -> {value:0.00} ({metresPerUnit * 1000f:0.00} mm per canvas unit, {GlyphPixelsPerMetre:0} px/m).", canvas);
         }
 
         /// <summary>

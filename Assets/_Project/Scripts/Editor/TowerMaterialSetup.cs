@@ -7,14 +7,14 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 
 /// <summary>
-/// Tools > Einstein Telescope > Torens > ...
-/// PBR-metaal voor TowerConstellation, in drie stappen:
-///  1. Genereert naadloze textures (base color, metallic/smoothness, normal map) voor geborsteld en
-///     gestraald RVS en maakt URP Lit-materialen, elk met een "_Clear"-tweeling (transparant) voor TowerTransparency.
-///  2. Koppelt de materialen aan de material slots van TowerConstellation.fbx en zet TowerTransparency
-///     op het object TowerConstellation in de open scene.
-///  3. Meet de UV's van de FBX (meter per UV-eenheid) en zet de tiling zo dat één texture-tegel 1 x 1 m is.
-/// Veilig om opnieuw te draaien: bestaande textures en materialen worden bijgewerkt, niet vervangen (GUID's blijven).
+/// Tools > Einstein Telescope > Towers > ...
+/// PBR metal for TowerConstellation, in three steps:
+///  1. Generates seamless textures (base color, metallic/smoothness, normal map) for brushed and
+///     blasted stainless steel and creates URP Lit materials, each with a "_Clear" twin (transparent) for TowerTransparency.
+///  2. Assigns the materials to the material slots of TowerConstellation.fbx and puts TowerTransparency
+///     on the TowerConstellation object in the open scene.
+///  3. Measures the UVs of the FBX (meters per UV unit) and sets the tiling so that one texture tile is 1 x 1 m.
+/// Safe to run again: existing textures and materials are updated, not replaced (GUIDs stay the same).
 /// </summary>
 public static class TowerMaterialSetup
 {
@@ -25,30 +25,30 @@ public static class TowerMaterialSetup
     const string OLD_BOLTS = "Assets/_Project/Materials/Tower/Bolts/BoltDecal.mat";
     const string TOWER_OBJECT = "TowerConstellation";
     const int SIZE = 1024;
-    const float TILE_METERS = 1f;   // één texture-tegel beslaat 1 x 1 m
+    const float TILE_METERS = 1f;   // one texture tile covers 1 x 1 m
 
     const string BRUSHED = "M_Tower_BrushedSteel";
     const string BLASTED = "M_Tower_BlastedSteel";
     const string WELD = "M_Tower_Weld";
     const string BOLTS = "M_Tower_Bolts";
 
-    // Material slot in de FBX → nieuw materiaal
+    // Material slot in the FBX → new material
     static readonly (string slot, string material)[] Slots =
     {
-        // Let op: in de FBX staan de tankmantels en bundelbuizen op het slot "Beam_Glass" (naam is misleidend).
-        // Champagne RVS zoals op de foto's. Zonder materiaal op dit slot wordt alles felroze.
+        // Note: in the FBX the tank shells and beam tubes are on the slot "Beam_Glass" (the name is misleading).
+        // Champagne stainless steel as in the photos. Without a material on this slot everything turns bright pink.
         ("Beam_Glass", BLASTED),
-        // Aanname op basis van Davids namen: "Yellowy" = warm RVS, "Polished" = het lichtere, neutrale RVS
-        // (flenzen, poortdeksels). Klopt dat niet: hier omwisselen.
+        // Assumption based on David's names: "Yellowy" = warm stainless steel, "Polished" = the lighter, neutral steel
+        // (flanges, port covers). If that is wrong: swap them here.
         ("PolishedSteel", BRUSHED),
         ("Yellowy_Steel", BLASTED),
         ("WeldTube", WELD),
         ("BoltDecal", BOLTS),
     };
 
-    // ---------------------------------------------------------------- 1. textures + materialen
+    // ---------------------------------------------------------------- 1. textures + materials
 
-    [MenuItem("Tools/Einstein Telescope/Torens/1. PBR-textures en materialen genereren")]
+    [MenuItem("Tools/Einstein Telescope/Towers/1. Generate PBR textures and materials")]
     static void Generate()
     {
         EnsureFolder(TEX_DIR);
@@ -69,9 +69,9 @@ public static class TowerMaterialSetup
         var blasted = GetOrCreateMaterial(BLASTED, null);
         SetupTexturedMetal(blasted, "T_BlastedSteel");
 
-        // Las en bouten houden hun eigen detailtextures (lasrups, boutkoppen); alleen de PBR-waarden worden echt RVS
+        // Weld and bolts keep their own detail textures (weld bead, bolt heads); only the PBR values become real stainless steel
         var weld = GetOrCreateMaterial(WELD, AssetDatabase.LoadAssetAtPath<Material>(OLD_WELD));
-        weld.SetColor("_BaseColor", new Color(0.64f, 0.58f, 0.49f));   // lasnaden zijn op de foto's iets donkerder/warmer
+        weld.SetColor("_BaseColor", new Color(0.64f, 0.58f, 0.49f));   // welds are slightly darker/warmer in the photos
         weld.SetFloat("_Metallic", 1f);
         weld.SetFloat("_Smoothness", 0.40f);
 
@@ -87,23 +87,23 @@ public static class TowerMaterialSetup
         }
 
         AssetDatabase.SaveAssets();
-        Debug.Log($"[TowerMaterialSetup] Textures in {TEX_DIR}, materialen in {MAT_DIR}. Volgende stap: 2. Koppelen.");
+        Debug.Log($"[TowerMaterialSetup] Textures in {TEX_DIR}, materials in {MAT_DIR}. Next step: 2. Assign.");
     }
 
     struct Surface
     {
         public Color baseColor;   // sRGB
         public float smoothness;
-        public float height;      // alleen voor de normal map
+        public float height;      // only for the normal map
     }
 
-    // Geborsteld, neutraal RVS (leidingen, flenzen): lange fijne lijnen langs U, satijnglans
+    // Brushed, neutral stainless steel (pipes, flanges): long fine lines along U, satin sheen
     static Surface BrushedSteel(float u, float v)
     {
-        float streak = Fbm(u, v, 2, 256, 2, 11);   // lange lijnen langs U (zie je van dichtbij)
+        float streak = Fbm(u, v, 2, 256, 2, 11);   // long lines along U (visible up close)
         float grain = Fbm(u, v, 96, 96, 2, 23);
-        float patch = Fbm(u, v, 6, 6, 3, 31);      // vlekken van 10-30 cm: breken de reflectie op afstand
-        float cloud = Fbm(u, v, 2, 2, 3, 37);      // trage variatie, zodat het niet CG-vlak oogt
+        float patch = Fbm(u, v, 6, 6, 3, 31);      // patches of 10-30 cm: break up the reflection at a distance
+        float cloud = Fbm(u, v, 2, 2, 3, 37);      // slow variation, so it does not look CG-flat
         float shade = (0.92f + 0.08f * streak) * (0.94f + 0.06f * patch) * (0.97f + 0.03f * cloud);
         return new Surface
         {
@@ -113,8 +113,8 @@ public static class TowerMaterialSetup
         };
     }
 
-    // Gestraald RVS (tankmantels): champagnekleurig en satijnmat zoals op de foto's van ETpathfinder,
-    // met zachte, brede reflecties en hier en daar een lichte vlek
+    // Blasted stainless steel (tank shells): champagne-coloured and satin-matte as in the ETpathfinder photos,
+    // with soft, broad reflections and a light stain here and there
     static Surface BlastedSteel(float u, float v)
     {
         float grain = Fbm(u, v, 128, 128, 2, 41);
@@ -133,8 +133,8 @@ public static class TowerMaterialSetup
 
     static Color Shade(Color c, float f) => new Color(c.r * f, c.g * f, c.b * f, 1f);
 
-    /// <param name="normalStrength">Hoe sterk het hoogteverschil in de normal map doorwerkt.</param>
-    /// <param name="progressStart">Alleen voor de voortgangsbalk.</param>
+    /// <param name="normalStrength">How strongly the height difference shows up in the normal map.</param>
+    /// <param name="progressStart">Only for the progress bar.</param>
     static void BakeTextures(string name, System.Func<float, float, Surface> surface, float normalStrength, float progressStart)
     {
         var albedo = new Color32[SIZE * SIZE];
@@ -144,7 +144,7 @@ public static class TowerMaterialSetup
         for (int y = 0; y < SIZE; y++)
         {
             if (y % 64 == 0)
-                EditorUtility.DisplayProgressBar("Torens", $"{name} berekenen", progressStart + 0.5f * y / SIZE);
+                EditorUtility.DisplayProgressBar("Towers", $"Computing {name}",progressStart + 0.5f * y / SIZE);
             for (int x = 0; x < SIZE; x++)
             {
                 var s = surface((x + 0.5f) / SIZE, (y + 0.5f) / SIZE);
@@ -155,7 +155,7 @@ public static class TowerMaterialSetup
             }
         }
 
-        // Normal map uit het hoogteveld (centrale differenties, rond de randen voor naadloos tegelen)
+        // Normal map from the height field (central differences, wrapping at the edges for seamless tiling)
         var normal = new Color32[SIZE * SIZE];
         for (int y = 0; y < SIZE; y++)
         for (int x = 0; x < SIZE; x++)
@@ -186,7 +186,7 @@ public static class TowerMaterialSetup
         importer.mipmapEnabled = true;
         importer.wrapMode = TextureWrapMode.Repeat;
         importer.filterMode = FilterMode.Trilinear;
-        importer.anisoLevel = 8;   // hoge tanks zie je onder een schuine hoek; zonder aniso worden de lijnen vaag
+        importer.anisoLevel = 8;   // tall tanks are seen at an angle; without aniso the lines blur
         importer.maxTextureSize = SIZE;
         importer.SaveAndReimport();
     }
@@ -199,8 +199,8 @@ public static class TowerMaterialSetup
         m.SetColor("_BaseColor", Color.white);
         m.SetTexture("_MetallicGlossMap", LoadTexture(textureSet + "_MetallicSmoothness"));
         m.SetFloat("_Metallic", 1f);
-        m.SetFloat("_Smoothness", 1f);                 // vermenigvuldiger op de A-waarde van de map
-        m.SetFloat("_SmoothnessTextureChannel", 0f);   // smoothness uit de alpha van de metallic map
+        m.SetFloat("_Smoothness", 1f);                 // multiplier on the A value of the map
+        m.SetFloat("_SmoothnessTextureChannel", 0f);   // smoothness from the alpha of the metallic map
         m.SetTexture("_BumpMap", LoadTexture(textureSet + "_Normal"));
         m.SetFloat("_BumpScale", 1f);
     }
@@ -223,7 +223,7 @@ public static class TowerMaterialSetup
         return mat;
     }
 
-    /// <summary>Kopie van het opaque materiaal met Surface Type Transparent (alpha blend), beide kanten zichtbaar.</summary>
+    /// <summary>Copy of the opaque material with Surface Type Transparent (alpha blend), both sides visible.</summary>
     static void UpdateClearTwin(Material opaque)
     {
         string path = $"{MAT_DIR}/{opaque.name}_Clear.mat";
@@ -237,25 +237,25 @@ public static class TowerMaterialSetup
         clear.CopyPropertiesFromMaterial(opaque);
         clear.SetFloat("_Surface", (float)BaseShaderGUI.SurfaceType.Transparent);
         clear.SetFloat("_Blend", (float)BaseShaderGUI.BlendMode.Alpha);
-        clear.SetFloat("_BlendModePreserveSpecular", 0f);   // anders blijft metaal (alles specular) fel zichtbaar
-        clear.SetFloat("_Cull", (float)BaseShaderGUI.RenderFace.Both);   // achterwand van de tank ook zien
+        clear.SetFloat("_BlendModePreserveSpecular", 0f);   // otherwise metal (all specular) stays brightly visible
+        clear.SetFloat("_Cull", (float)BaseShaderGUI.RenderFace.Both);   // also show the back wall of the tank
         BaseShaderGUI.SetMaterialKeywords(clear, LitGUI.SetMaterialKeywords);
         BaseShaderGUI.SetupMaterialBlendMode(clear);
         EditorUtility.SetDirty(clear);
     }
 
-    // ---------------------------------------------------------------- 2. koppelen
+    // ---------------------------------------------------------------- 2. assign
 
-    [MenuItem("Tools/Einstein Telescope/Torens/2. Koppelen aan TowerConstellation")]
+    [MenuItem("Tools/Einstein Telescope/Towers/2. Assign to TowerConstellation")]
     static void Assign()
     {
         var importer = AssetImporter.GetAtPath(FBX_PATH) as ModelImporter;
-        if (!importer) { Debug.LogError($"[TowerMaterialSetup] {FBX_PATH} niet gevonden."); return; }
+        if (!importer) { Debug.LogError($"[TowerMaterialSetup] {FBX_PATH} not found."); return; }
 
         foreach (var (slot, name) in Slots)
         {
             var mat = LoadMaterial(name);
-            if (!mat) { Debug.LogError($"[TowerMaterialSetup] {name} bestaat niet. Draai eerst stap 1."); return; }
+            if (!mat) { Debug.LogError($"[TowerMaterialSetup] {name} does not exist. Run step 1 first."); return; }
             importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), slot), mat);
         }
         importer.SaveAndReimport();
@@ -263,11 +263,11 @@ public static class TowerMaterialSetup
         var tower = GameObject.Find(TOWER_OBJECT);
         if (!tower)
         {
-            Debug.LogWarning($"[TowerMaterialSetup] FBX gekoppeld, maar '{TOWER_OBJECT}' staat niet in de open scene. TowerTransparency niet toegevoegd.");
+            Debug.LogWarning($"[TowerMaterialSetup] FBX assigned, but '{TOWER_OBJECT}' is not in the open scene. TowerTransparency not added.");
             return;
         }
 
-        // Een material-override in de scene wint van de FBX-remap (zo hing PolishedSteel er nog op): terugdraaien
+        // A material override in the scene wins over the FBX remap (that is how PolishedSteel was still on it): revert it
         int reverted = 0;
         foreach (var r in tower.GetComponentsInChildren<Renderer>(true))
         {
@@ -276,7 +276,7 @@ public static class TowerMaterialSetup
             PrefabUtility.RevertPropertyOverride(prop, InteractionMode.UserAction);
             reverted++;
         }
-        if (reverted > 0) Debug.Log($"[TowerMaterialSetup] {reverted} material-override(s) in de scene teruggedraaid.");
+        if (reverted > 0) Debug.Log($"[TowerMaterialSetup] Reverted {reverted} material override(s) in the scene.");
 
         var tt = tower.GetComponent<TowerTransparency>();
         if (!tt) tt = Undo.AddComponent<TowerTransparency>(tower);
@@ -291,20 +291,20 @@ public static class TowerMaterialSetup
         EditorSceneManager.MarkSceneDirty(tower.scene);
 
         Selection.activeGameObject = tower;
-        Debug.Log("[TowerMaterialSetup] Materialen gekoppeld en TowerTransparency ingesteld. Sla de scene op en bak de belichting opnieuw.");
+        Debug.Log("[TowerMaterialSetup] Materials assigned and TowerTransparency set up. Save the scene and bake the lighting again.");
     }
 
     static Material LoadMaterial(string name) => AssetDatabase.LoadAssetAtPath<Material>($"{MAT_DIR}/{name}.mat");
 
-    // ---------------------------------------------------------------- 3. UV-check + tiling
+    // ---------------------------------------------------------------- 3. UV check + tiling
 
-    [MenuItem("Tools/Einstein Telescope/Torens/3. UV's controleren en tiling instellen")]
+    [MenuItem("Tools/Einstein Telescope/Towers/3. Check UVs and set tiling")]
     static void CheckUVs()
     {
         var model = AssetDatabase.LoadAssetAtPath<GameObject>(FBX_PATH);
-        if (!model) { Debug.LogError($"[TowerMaterialSetup] {FBX_PATH} niet gevonden."); return; }
+        if (!model) { Debug.LogError($"[TowerMaterialSetup] {FBX_PATH} not found."); return; }
 
-        // Per materiaal: (meter per UV-eenheid, oppervlak in m²) per driehoek
+        // Per material: (meters per UV unit, area in m²) per triangle
         var samples = new Dictionary<string, List<(float metersPerUv, float area)>>();
         var noUv = new Dictionary<string, float>();
 
@@ -348,7 +348,7 @@ public static class TowerMaterialSetup
             }
         }
 
-        var report = new System.Text.StringBuilder("[TowerMaterialSetup] UV-check van TowerConstellation.fbx\n");
+        var report = new System.Text.StringBuilder("[TowerMaterialSetup] UV check of TowerConstellation.fbx\n");
         foreach (var kv in samples.OrderBy(k => k.Key))
         {
             var list = kv.Value;
@@ -358,19 +358,19 @@ public static class TowerMaterialSetup
             float badPct = 100f * bad / total;
             if (list.Count == 0)
             {
-                report.AppendLine($"  {kv.Key}: GEEN bruikbare UV's ({total:0.0} m²). Unwrappen in Blender of een triplanar shader gebruiken.");
+                report.AppendLine($"  {kv.Key}: NO usable UVs ({total:0.0} m²). Unwrap in Blender or use a triplanar shader.");
                 continue;
             }
 
             float p10 = Percentile(list, 0.1f), p50 = Percentile(list, 0.5f), p90 = Percentile(list, 0.9f);
             float spread = p90 / Mathf.Max(p10, 1e-6f);
             string verdict = badPct > 5f || spread > 4f
-                ? "PROBLEEM: ongelijke of ontbrekende UV's, textures rekken uit. Opnieuw unwrappen (Smart UV Project) of triplanar."
+                ? "PROBLEM: uneven or missing UVs, textures get stretched. Unwrap again (Smart UV Project) or use triplanar."
                 : "ok";
-            report.AppendLine($"  {kv.Key}: {total:0.0} m², 1 UV-eenheid = {p50:0.00} m (10–90%: {p10:0.00}–{p90:0.00} m), " +
-                              $"zonder UV {badPct:0}% → {verdict}");
+            report.AppendLine($"  {kv.Key}: {total:0.0} m², 1 UV unit = {p50:0.00} m (10–90%: {p10:0.00}–{p90:0.00} m), " +
+                              $"without UV {badPct:0}% → {verdict}");
 
-            // Alleen de gegenereerde metalen krijgen een tiling op maat; las en bouten hebben eigen UV-layouts
+            // Only the generated metals get a custom tiling; weld and bolts have their own UV layouts
             string target = kv.Key == "PolishedSteel" || kv.Key == BRUSHED ? BRUSHED
                           : kv.Key == "Yellowy_Steel" || kv.Key == "Beam_Glass" || kv.Key == BLASTED ? BLASTED
                           : null;
@@ -381,10 +381,10 @@ public static class TowerMaterialSetup
             {
                 if (!mat) continue;
                 mat.SetTextureScale("_BaseMap", new Vector2(tiling, tiling));
-                BaseShaderGUI.SetMaterialKeywords(mat, LitGUI.SetMaterialKeywords);   // zet ook _MainTex gelijk (voor het baken)
+                BaseShaderGUI.SetMaterialKeywords(mat, LitGUI.SetMaterialKeywords);   // also syncs _MainTex (for baking)
                 EditorUtility.SetDirty(mat);
             }
-            report.AppendLine($"    → tiling van {target} (en _Clear) op {tiling:0.##} gezet.");
+            report.AppendLine($"    → tiling of {target} (and _Clear) set to {tiling:0.##}.");
         }
 
         AssetDatabase.SaveAssets();
@@ -393,9 +393,9 @@ public static class TowerMaterialSetup
     }
 
     /// <summary>
-    /// Metaal toont alleen wat het weerspiegelt. Staat het opnamepunt van een reflection probe binnenin een toren,
-    /// dan ziet de probe alleen de donkere binnenkant en wordt al het metaal zwart.
-    /// Test: vanaf de probe 6 stralen schieten naar het torenmodel (achterkanten tellen mee).
+    /// Metal only shows what it reflects. If the capture point of a reflection probe is inside a tower,
+    /// the probe only sees the dark inside and all the metal turns black.
+    /// Test: cast 6 rays from the probe at the tower model (back faces count too).
     /// </summary>
     static void CheckProbes(System.Text.StringBuilder report)
     {
@@ -428,10 +428,10 @@ public static class TowerMaterialSetup
                         if (temp.Contains(hit.collider.gameObject)) { hits++; break; }
 
                 string verdict = hits >= 5
-                    ? "ZIT BINNENIN een toren: al het metaal weerspiegelt de donkere binnenkant. Verplaats de probe naar een vrije plek " +
-                      "(vul Box Offset aan zodat de box gelijk blijft) en bak opnieuw."
-                    : "vrij";
-                report.AppendLine($"  Reflection probe {probe.name} op {p}: {hits}/6 richtingen raken een toren → {verdict}");
+                    ? "IS INSIDE a tower: all the metal reflects the dark inside. Move the probe to a free spot " +
+                      "(adjust Box Offset so the box stays the same) and bake again."
+                    : "clear";
+                report.AppendLine($"  Reflection probe {probe.name} at {p}: {hits}/6 directions hit a tower → {verdict}");
             }
         }
         finally
@@ -441,7 +441,7 @@ public static class TowerMaterialSetup
         }
     }
 
-    // Oppervlakgewogen percentiel
+    // Area-weighted percentile
     internal static float Percentile(List<(float value, float weight)> list, float p)
     {
         var sorted = list.OrderBy(x => x.value).ToList();
@@ -454,7 +454,7 @@ public static class TowerMaterialSetup
         return sorted[sorted.Count - 1].value;
     }
 
-    // ---------------------------------------------------------------- naadloze ruis
+    // ---------------------------------------------------------------- seamless noise
 
     internal static float Hash(int x, int y, int seed)
     {
@@ -467,7 +467,7 @@ public static class TowerMaterialSetup
         }
     }
 
-    /// <summary>Value noise met px × py cellen over het eenheidsvierkant; loopt over de randen door (naadloos).</summary>
+    /// <summary>Value noise with px × py cells over the unit square; wraps around the edges (seamless).</summary>
     internal static float Noise(float u, float v, int px, int py, int seed)
     {
         float x = u * px, y = v * py;

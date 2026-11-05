@@ -3,18 +3,18 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Eén per controller. Schiet een ray vanaf rayOrigin; raakt hij een CurvedScreen,
-/// dan worden hover / klik / drag (knoppen, toggles, sliders) naar de canvas doorgestuurd.
+/// One per controller. Casts a ray from rayOrigin; if it hits a CurvedScreen,
+/// hover / click / drag (buttons, toggles, sliders) are forwarded to the canvas.
 /// </summary>
 public class CurvedScreenPointer : MonoBehaviour
 {
-    [Tooltip("Aim-transform van de controller (zelfde oorsprong/richting als de XR-ray)")]
+    [Tooltip("Aim transform of the controller (same origin/direction as the XR ray)")]
     public Transform rayOrigin;
 
-    [Tooltip("Bijv. XRI Right Interaction/UI Press")]
+    [Tooltip("E.g. XRI Right Interaction/UI Press")]
     public InputActionReference pressAction;
 
-    [Tooltip("Layer van het gebogen scherm")]
+    [Tooltip("Layer of the curved screen")]
     public LayerMask screenMask;
 
     public float maxDistance = 10f;
@@ -23,7 +23,7 @@ public class CurvedScreenPointer : MonoBehaviour
     GameObject hovered, pressed, dragTarget;
     Vector2 lastPos;
 
-    // Geen ?. op Unity-objecten (InputActionReference is een ScriptableObject): nep-null wordt dan gemist
+    // No ?. on Unity objects (InputActionReference is a ScriptableObject): fake null would be missed
     void OnEnable()
     {
         if (pressAction && pressAction.action != null) pressAction.action.Enable();
@@ -35,7 +35,7 @@ public class CurvedScreenPointer : MonoBehaviour
         if (es == null || rayOrigin == null || !pressAction || pressAction.action == null) return;
         data ??= new PointerEventData(es) { button = PointerEventData.InputButton.Left };
 
-        // 1. Raycast naar het scherm → UV → UI-element
+        // 1. Raycast to the screen → UV → UI element
         GameObject target = null;
         if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out var hit, maxDistance, screenMask)
             && hit.collider.TryGetComponent(out CurvedScreen screen))
@@ -61,7 +61,7 @@ public class CurvedScreenPointer : MonoBehaviour
 
         var action = pressAction.action;
 
-        // 3. Indrukken
+        // 3. Press
         if (action.WasPressedThisFrame() && target)
         {
             data.pressPosition = data.position;
@@ -79,7 +79,7 @@ public class CurvedScreenPointer : MonoBehaviour
             if (dragTarget) ExecuteEvents.Execute(dragTarget, data, ExecuteEvents.initializePotentialDrag);
         }
 
-        // 4. Slepen (sliders, scroll views)
+        // 4. Drag (sliders, scroll views)
         if (action.IsPressed() && dragTarget)
         {
             if (!data.dragging &&
@@ -91,7 +91,7 @@ public class CurvedScreenPointer : MonoBehaviour
             if (data.dragging) ExecuteEvents.Execute(dragTarget, data, ExecuteEvents.dragHandler);
         }
 
-        // 5. Loslaten → up + click
+        // 5. Release → up + click
         if (action.WasReleasedThisFrame())
         {
             if (pressed) ExecuteEvents.Execute(pressed, data, ExecuteEvents.pointerUpHandler);
@@ -115,7 +115,7 @@ public class CurvedScreenPointer : MonoBehaviour
     {
         if (data != null)
         {
-            // Een ingedrukte knop of slider netjes loslaten, anders blijft hij "vast" hangen
+            // Cleanly release a pressed button or slider, otherwise it stays "stuck"
             if (pressed) ExecuteEvents.Execute(pressed, data, ExecuteEvents.pointerUpHandler);
             if (data.dragging && dragTarget) ExecuteEvents.Execute(dragTarget, data, ExecuteEvents.endDragHandler);
             if (hovered) ExecuteEvents.ExecuteHierarchy(hovered, data, ExecuteEvents.pointerExitHandler);

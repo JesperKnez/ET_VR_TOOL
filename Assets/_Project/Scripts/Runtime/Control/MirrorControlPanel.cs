@@ -94,6 +94,11 @@ namespace EinsteinTelescope.Laser
 
             StopHoldMove();
             UndoEntry entry = m_Undo[m_Undo.Count - 1];
+            if (entry.Mirror != null && entry.Mirror.InputLocked)
+            {
+                return false;   // level completed: the mirrors stay where they are
+            }
+
             m_Undo.RemoveAt(m_Undo.Count - 1);
             if (entry.Mirror == null)
             {
@@ -187,7 +192,14 @@ namespace EinsteinTelescope.Laser
             onFineModeChanged.Invoke(fine);
         }
 
-        public void ResetSelectedToStart() => SelectedMirror?.ResetToStart();
+        public void ResetSelectedToStart()
+        {
+            MirrorMount mirror = SelectedMirror;
+            if (mirror != null && !mirror.InputLocked)
+            {
+                mirror.ResetToStart();
+            }
+        }
 
         // ----- Unity messages ---------------------------------------------------------------------
 

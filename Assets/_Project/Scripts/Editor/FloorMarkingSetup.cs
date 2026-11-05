@@ -7,20 +7,20 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 /// <summary>
-/// Tools > Einstein Telescope > Torens > Vloermarkering rond torens en buizen
-/// Legt zwart-gele veiligheidsmarkering (geverfde tape) op de vloer van de hal:
-///  - een ring om elke toren
-///  - twee stroken langs elke bundelbuis, van ring tot ring
-/// Torens en buizen worden gemeten uit de mesh van TowerConstellation (zelfde herkenning als "Torenlayout meten").
+/// Tools > Einstein Telescope > Towers > Floor marking around towers and tubes
+/// Lays black-and-yellow safety marking (painted tape) on the hall floor:
+///  - a ring around every tower
+///  - two strips along every beam tube, from ring to ring
+/// Towers and tubes are measured from the TowerConstellation mesh (same detection as "Measure tower layout").
 ///
-/// Geen URP Decal Projectors: die hebben een Decal renderer feature (DBuffer) nodig, kosten op de Quest veel en
-/// ondersteunen smoothness alleen in de DBuffer-modus. In plaats daarvan één platte mesh 2 mm boven de vloer
-/// (één draw call) met een URP Lit-materiaal: geverfd, glanzend (smoothness ±0.75) met slijtplekken die matter zijn,
-/// en een normal map zodat de randen van de verflagen het licht vangen. De reflectie komt van RP_Hall.
+/// No URP Decal Projectors: they need a Decal renderer feature (DBuffer), are expensive on the Quest and
+/// only support smoothness in DBuffer mode. Instead: one flat mesh 2 mm above the floor
+/// (one draw call) with a URP Lit material: painted, glossy (smoothness ±0.75) with worn spots that are more matte,
+/// and a normal map so the edges of the paint layers catch the light. The reflection comes from RP_Hall.
 ///
-/// Veilig om opnieuw te draaien: textures, materiaal en mesh worden bijgewerkt, niet vervangen (GUID's blijven),
-/// en het object FloorMarkings in de scene wordt hergebruikt. Daarna belichting opnieuw baken.
-/// Uiterlijk aanpassen: de functie Hazard() en de constanten hieronder.
+/// Safe to run again: textures, material and mesh are updated, not replaced (GUIDs stay the same),
+/// and the FloorMarkings object in the scene is reused. Bake the lighting again afterwards.
+/// To change the look: the function Hazard() and the constants below.
 /// </summary>
 public static class FloorMarkingSetup
 {
@@ -32,34 +32,34 @@ public static class FloorMarkingSetup
     const string MESH_PATH = "Assets/_Project/Models/Room/FloorMarkings.asset";
     const int SIZE = 512;
 
-    const float WIDTH = 0.12f;          // breedte van de markering; één texture-tegel = WIDTH x WIDTH
-    const float TOWER_MARGIN = 0.35f;   // vrije ruimte tussen tankmantel en binnenkant van de ring
-    const float TUBE_MARGIN = 0.30f;    // vrije ruimte tussen buis (van bovenaf gezien) en de strook
-    const float RING_GAP = 0.05f;       // stroken stoppen zo ver vóór de ring
-    const float SPAN_GAP = 1.5f;        // buisdelen met een kleiner gat ertussen (balg, flens) horen bij één buis
-    const float MIN_LENGTH = 0.4f;      // kortere stukjes strook worden weggelaten
-    const float LIFT = 0.002f;          // boven de vloer, tegen z-fighting
+    const float WIDTH = 0.12f;          // width of the marking; one texture tile = WIDTH x WIDTH
+    const float TOWER_MARGIN = 0.35f;   // clearance between the tank shell and the inside of the ring
+    const float TUBE_MARGIN = 0.30f;    // clearance between the tube (seen from above) and the strip
+    const float RING_GAP = 0.05f;       // strips stop this far before the ring
+    const float SPAN_GAP = 1.5f;        // tube parts with a smaller gap between them (bellows, flange) belong to one tube
+    const float MIN_LENGTH = 0.4f;      // shorter pieces of strip are left out
+    const float LIFT = 0.002f;          // above the floor, against z-fighting
     const int RING_SEGMENTS = 96;
 
     struct Line
     {
-        public Vector2 dir;      // richting (x, z), genormaliseerd
-        public float offset;     // afstand van de hartlijn tot de oorsprong, loodrecht op dir
+        public Vector2 dir;      // direction (x, z), normalized
+        public float offset;     // distance from the center line to the origin, perpendicular to dir
         public float radius;
-        public List<Vector2> spans;   // (begin, eind) langs dir
+        public List<Vector2> spans;   // (start, end) along dir
     }
 
-    [MenuItem("Tools/Einstein Telescope/Torens/Vloermarkering rond torens en buizen")]
+    [MenuItem("Tools/Einstein Telescope/Towers/Floor marking around towers and tubes")]
     static void Generate()
     {
         var root = GameObject.Find(TOWER_OBJECT);
-        if (!root) { Debug.LogError($"[FloorMarkingSetup] '{TOWER_OBJECT}' niet gevonden in de open scene."); return; }
+        if (!root) { Debug.LogError($"[FloorMarkingSetup] '{TOWER_OBJECT}' not found in the open scene."); return; }
 
         var parts = new List<TowerLayoutProbe.Part>();
         foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
             if (mf.sharedMesh) parts.AddRange(TowerLayoutProbe.SplitParts(mf.sharedMesh, mf.transform.localToWorldMatrix));
         var towers = TowerLayoutProbe.FindTowers(parts);
-        if (towers.Count == 0) { Debug.LogError("[FloorMarkingSetup] Geen torens herkend in de mesh."); return; }
+        if (towers.Count == 0) { Debug.LogError("[FloorMarkingSetup] No towers recognized in the mesh."); return; }
         var lines = FindTubeLines(parts);
 
         float floorY = FindFloor(root, towers, out string floorSource);
@@ -78,14 +78,14 @@ public static class FloorMarkingSetup
         mesh = SaveMesh(mesh);
         PlaceInScene(mesh, mat);
 
-        Debug.Log($"[FloorMarkingSetup] {towers.Count} ringen en {strips} stroken langs {lines.Count} buizen, " +
-                  $"vloer op y = {floorY:0.000} ({floorSource}), {mesh.triangles.Length / 3} tris.\n" +
-                  "Sla de scene op en bak de belichting opnieuw (Window > Rendering > Lighting > Generate Lighting).");
+        Debug.Log($"[FloorMarkingSetup] {towers.Count} rings and {strips} strips along {lines.Count} tubes, " +
+                  $"floor at y = {floorY:0.000} ({floorSource}), {mesh.triangles.Length / 3} tris.\n" +
+                  "Save the scene and bake the lighting again (Window > Rendering > Lighting > Generate Lighting).");
     }
 
-    // ---------------------------------------------------------------- meten
+    // ---------------------------------------------------------------- measuring
 
-    /// <summary>Bundelbuizen, samengevoegd per hartlijn: een buis bestaat vaak uit meerdere delen (flenzen, balgen).</summary>
+    /// <summary>Beam tubes, merged per center line: a tube often consists of several parts (flanges, bellows).</summary>
     static List<Line> FindTubeLines(List<TowerLayoutProbe.Part> parts)
     {
         var lines = new List<Line>();
@@ -95,7 +95,7 @@ public static class FloorMarkingSetup
             var a = new Vector2(a3.x, a3.z);
             var b = new Vector2(b3.x, b3.z);
             var dir = (b - a).normalized;
-            if (dir.x < -1e-4f || (Mathf.Abs(dir.x) <= 1e-4f && dir.y < 0f)) dir = -dir;   // één richting per lijn
+            if (dir.x < -1e-4f || (Mathf.Abs(dir.x) <= 1e-4f && dir.y < 0f)) dir = -dir;   // one direction per line
             var normal = new Vector2(-dir.y, dir.x);
             float offset = Vector2.Dot(normal, a);
             float t0 = Vector2.Dot(dir, a), t1 = Vector2.Dot(dir, b);
@@ -132,8 +132,8 @@ public static class FloorMarkingSetup
     }
 
     /// <summary>
-    /// Vloerhoogte: raycast omlaag naast de eerste toren (colliders van TowerConstellation tellen niet mee).
-    /// Zonder vloer-collider: de onderkant van TowerConstellation (de poten staan op de vloer).
+    /// Floor height: raycast down next to the first tower (colliders of TowerConstellation do not count).
+    /// Without a floor collider: the bottom of TowerConstellation (the legs stand on the floor).
     /// </summary>
     static float FindFloor(GameObject towerRoot, List<TowerLayoutProbe.Tower> towers, out string source)
     {
@@ -144,7 +144,7 @@ public static class FloorMarkingSetup
         foreach (var hit in Physics.RaycastAll(origin, Vector3.down, 20f, ~0, QueryTriggerInteraction.Ignore).OrderBy(h => h.distance))
         {
             if (hit.collider.transform.IsChildOf(towerRoot.transform)) continue;
-            source = $"raycast op '{hit.collider.name}'";
+            source = $"raycast on '{hit.collider.name}'";
             return hit.point.y;
         }
 
@@ -155,7 +155,7 @@ public static class FloorMarkingSetup
             if (first) { bounds = rend.bounds; first = false; }
             else bounds.Encapsulate(rend.bounds);
         }
-        source = "onderkant TowerConstellation, geen vloer-collider gevonden";
+        source = "bottom of TowerConstellation, no floor collider found";
         return bounds.min.y;
     }
 
@@ -168,10 +168,10 @@ public static class FloorMarkingSetup
         public readonly List<Vector4> tangents = new List<Vector4>();
         public readonly List<int> tris = new List<int>();
 
-        /// <summary>Twee vertices dwars op de looprichting: v = 0 links, v = 1 rechts (gezien in de looprichting).</summary>
+        /// <summary>Two vertices across the running direction: v = 0 left, v = 1 right (seen in the running direction).</summary>
         public void AddPair(Vector3 center, Vector3 along, float u)
         {
-            // Unity: bitangent = cross(normal, tangent); met normal = omhoog ligt v = 1 aan die kant
+            // Unity: bitangent = cross(normal, tangent); with normal = up, v = 1 lies on that side
             var side = new Vector3(along.z, 0f, -along.x);
             verts.Add(center - side * (WIDTH * 0.5f));
             verts.Add(center + side * (WIDTH * 0.5f));
@@ -182,7 +182,7 @@ public static class FloorMarkingSetup
             tangents.Add(tangent);
         }
 
-        /// <summary>Quad tussen het vorige en het laatste paar.</summary>
+        /// <summary>Quad between the previous and the last pair.</summary>
         public void ConnectLastPairs()
         {
             int i = verts.Count - 4;
@@ -192,7 +192,7 @@ public static class FloorMarkingSetup
 
         void AddTriangle(int a, int b, int c)
         {
-            // Voorkant naar boven (clockwise van bovenaf gezien)
+            // Front face up (clockwise seen from above)
             if (Vector3.Cross(verts[b] - verts[a], verts[c] - verts[a]).y < 0f) (b, c) = (c, b);
             tris.Add(a);
             tris.Add(b);
@@ -206,7 +206,7 @@ public static class FloorMarkingSetup
 
         float ringRadius(TowerLayoutProbe.Tower t) => t.diameter * 0.5f + TOWER_MARGIN + WIDTH * 0.5f;
 
-        // Ringen om de torens; u loopt rond en sluit op een heel aantal tegels, zodat er geen naad is
+        // Rings around the towers; u runs around and closes on a whole number of tiles, so there is no seam
         foreach (var t in towers)
         {
             float r = ringRadius(t);
@@ -221,7 +221,7 @@ public static class FloorMarkingSetup
             }
         }
 
-        // Stroken aan beide kanten van elke buis, onderbroken waar ze een ring zouden raken
+        // Strips on both sides of every tube, interrupted where they would touch a ring
         strips = 0;
         for (int li = 0; li < lines.Count; li++)
         {
@@ -244,7 +244,7 @@ public static class FloorMarkingSetup
                 {
                     if (s.y - s.x < MIN_LENGTH) continue;
                     var along = new Vector3(line.dir.x, 0f, line.dir.y);
-                    // Elke buis een fractie hoger, zodat kruisende stroken niet z-fighten
+                    // Each tube a fraction higher, so crossing strips do not z-fight
                     float stripY = y + 0.0002f * li;
                     Vector2 p0 = line.dir * s.x + normal * lateral, p1 = line.dir * s.y + normal * lateral;
                     builder.AddPair(new Vector3(p0.x, stripY, p0.y), along, 0f);
@@ -262,7 +262,7 @@ public static class FloorMarkingSetup
         mesh.SetNormals(Enumerable.Repeat(Vector3.up, builder.verts.Count).ToList());
         mesh.SetTriangles(builder.tris, 0);
         mesh.RecalculateBounds();
-        Unwrapping.GenerateSecondaryUVSet(mesh);   // lightmap-UV's, zodat de markering de gebakken schaduwen krijgt
+        Unwrapping.GenerateSecondaryUVSet(mesh);   // lightmap UVs, so the marking receives the baked shadows
         return mesh;
     }
 
@@ -286,7 +286,7 @@ public static class FloorMarkingSetup
             AssetDatabase.CreateAsset(mesh, MESH_PATH);
             return mesh;
         }
-        EditorUtility.CopySerialized(mesh, existing);   // zelfde asset, zelfde GUID
+        EditorUtility.CopySerialized(mesh, existing);   // same asset, same GUID
         existing.name = "FloorMarkings";
         Object.DestroyImmediate(mesh);
         EditorUtility.SetDirty(existing);
@@ -300,21 +300,21 @@ public static class FloorMarkingSetup
         if (!go)
         {
             go = new GameObject(ROOT_NAME);
-            Undo.RegisterCreatedObjectUndo(go, "Vloermarkering");
+            Undo.RegisterCreatedObjectUndo(go, "Floor marking");
         }
-        Undo.RecordObject(go.transform, "Vloermarkering");
-        go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);   // de mesh staat in wereldcoördinaten
+        Undo.RecordObject(go.transform, "Floor marking");
+        go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);   // the mesh is in world coordinates
         go.transform.localScale = Vector3.one;
 
         var filter = go.GetComponent<MeshFilter>();
         if (!filter) filter = Undo.AddComponent<MeshFilter>(go);
         var renderer = go.GetComponent<MeshRenderer>();
         if (!renderer) renderer = Undo.AddComponent<MeshRenderer>(go);
-        Undo.RecordObject(filter, "Vloermarkering");
-        Undo.RecordObject(renderer, "Vloermarkering");
+        Undo.RecordObject(filter, "Floor marking");
+        Undo.RecordObject(renderer, "Floor marking");
         filter.sharedMesh = mesh;
         renderer.sharedMaterial = mat;
-        renderer.shadowCastingMode = ShadowCastingMode.Off;   // ligt plat op de vloer
+        renderer.shadowCastingMode = ShadowCastingMode.Off;   // lies flat on the floor
         renderer.receiveShadows = true;
         renderer.receiveGI = ReceiveGI.Lightmaps;
         GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI | StaticEditorFlags.BatchingStatic);
@@ -322,7 +322,7 @@ public static class FloorMarkingSetup
         Selection.activeGameObject = go;
     }
 
-    // ---------------------------------------------------------------- textures + materiaal
+    // ---------------------------------------------------------------- textures + material
 
     struct Surface
     {
@@ -332,25 +332,25 @@ public static class FloorMarkingSetup
     }
 
     /// <summary>
-    /// Eén tegel van WIDTH x WIDTH: u langs de strook, v dwars erop. Diagonale strepen onder 45°,
-    /// per tegel één gele en één zwarte. Geverfd en glanzend, met vuil en matte slijtplekken (vooral langs de randen).
+    /// One tile of WIDTH x WIDTH: u along the strip, v across it. Diagonal stripes at 45°,
+    /// one yellow and one black per tile. Painted and glossy, with dirt and matte worn spots (mainly along the edges).
     /// </summary>
     static Surface Hazard(float u, float v)
     {
-        var yellow = new Color(0.93f, 0.70f, 0.06f);   // RAL 1003 signaalgeel
+        var yellow = new Color(0.93f, 0.70f, 0.06f);   // RAL 1003 signal yellow
         var black = new Color(0.07f, 0.07f, 0.07f);
-        var floor = new Color(0.62f, 0.62f, 0.60f);    // de vloer die door de slijtplekken heen komt
+        var floor = new Color(0.62f, 0.62f, 0.60f);    // the floor showing through the worn spots
 
-        // Strepen met zachte rand van ±1.5 pixel (anti-aliasing)
+        // Stripes with a soft edge of ±1.5 pixels (anti-aliasing)
         float s = Mathf.Sin(2f * Mathf.PI * (u + v));
         float isYellow = Mathf.Clamp01(0.5f + 0.5f * s / (2f * Mathf.PI * 1.5f / SIZE));
         var paint = Color.Lerp(black, yellow, isYellow);
 
         float grime = TowerMaterialSetup.Fbm(u, v, 4, 4, 5, 11);
-        float edge = 1f - Mathf.Clamp01(Mathf.Min(v, 1f - v) / 0.1f);   // 1 op de rand van de strook
+        float edge = 1f - Mathf.Clamp01(Mathf.Min(v, 1f - v) / 0.1f);   // 1 at the edge of the strip
         float wearNoise = TowerMaterialSetup.Fbm(u, v, 6, 6, 5, 23);
         float wear = Mathf.Clamp01(Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.76f, wearNoise + edge * 0.12f))) * 0.75f;
-        float peel = TowerMaterialSetup.Fbm(u, v, 32, 32, 3, 37);   // sinaasappelhuid van de verf
+        float peel = TowerMaterialSetup.Fbm(u, v, 32, 32, 3, 37);   // orange peel of the paint
 
         var color = Color.Lerp(paint, floor, wear) * Mathf.Lerp(0.8f, 1f, grime);
         color.a = 1f;
@@ -370,13 +370,13 @@ public static class FloorMarkingSetup
 
         for (int y = 0; y < SIZE; y++)
         {
-            if (y % 64 == 0) EditorUtility.DisplayProgressBar("Vloermarkering", "Textures berekenen", (float)y / SIZE);
+            if (y % 64 == 0) EditorUtility.DisplayProgressBar("Floor marking", "Computing textures", (float)y / SIZE);
             for (int x = 0; x < SIZE; x++)
             {
                 var s = Hazard((x + 0.5f) / SIZE, (y + 0.5f) / SIZE);
                 int i = y * SIZE + x;
                 albedo[i] = s.baseColor;
-                mask[i] = new Color(0f, 0f, 0f, s.smoothness);   // URP Lit: metallic in R (geen metaal), smoothness in A
+                mask[i] = new Color(0f, 0f, 0f, s.smoothness);   // URP Lit: metallic in R (no metal), smoothness in A
                 height[i] = s.height;
             }
         }
@@ -411,7 +411,7 @@ public static class FloorMarkingSetup
         importer.mipmapEnabled = true;
         importer.wrapMode = TextureWrapMode.Repeat;
         importer.filterMode = FilterMode.Trilinear;
-        importer.anisoLevel = 8;   // de vloer zie je vanuit de control room onder een flauwe hoek
+        importer.anisoLevel = 8;   // the floor is seen from the control room at a shallow angle
         importer.maxTextureSize = SIZE;
         importer.SaveAndReimport();
     }
@@ -430,11 +430,11 @@ public static class FloorMarkingSetup
 
         mat.SetTexture("_BaseMap", Load("_BaseColor"));
         mat.SetColor("_BaseColor", Color.white);
-        mat.SetTextureScale("_BaseMap", Vector2.one);   // de mesh-UV's tellen al in tegels
+        mat.SetTextureScale("_BaseMap", Vector2.one);   // the mesh UVs already count in tiles
         mat.SetTexture("_MetallicGlossMap", Load("_MetallicSmoothness"));
         mat.SetFloat("_Metallic", 0f);
-        mat.SetFloat("_Smoothness", 1f);                 // vermenigvuldiger op de A-waarde van de map
-        mat.SetFloat("_SmoothnessTextureChannel", 0f);   // smoothness uit de alpha van de metallic map
+        mat.SetFloat("_Smoothness", 1f);                 // multiplier on the A value of the map
+        mat.SetFloat("_SmoothnessTextureChannel", 0f);   // smoothness from the alpha of the metallic map
         mat.SetTexture("_BumpMap", Load("_Normal"));
         mat.SetFloat("_BumpScale", 1f);
         mat.SetFloat("_SpecularHighlights", 1f);

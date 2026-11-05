@@ -4,28 +4,28 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Tools > Einstein Telescope > XR > Restanten Composition Layers opruimen
-/// Na het verwijderen van Unity OpenXR Meta / Android XR / Composition Layers blijven er dingen achter
-/// die naar niet-bestaande scripts wijzen:
-///  1. OpenXR-features van die packages in OpenXRPackageSettings.asset
-///  2. "missing script"-componenten in de open scenes (bijv. CompositionLayer op Global Volume)
-///  3. het lege object "Default Scene Layer" dat Composition Layers zelf aanmaakte
-/// Veilig om opnieuw te draaien. Sla daarna de scene op.
+/// Tools > Einstein Telescope > XR > Clean up Composition Layers leftovers
+/// After removing Unity OpenXR Meta / Android XR / Composition Layers, things are left behind
+/// that point to scripts that no longer exist:
+///  1. OpenXR features of those packages in OpenXRPackageSettings.asset
+///  2. "missing script" components in the open scenes (e.g. CompositionLayer on Global Volume)
+///  3. the empty object "Default Scene Layer" that Composition Layers created itself
+/// Safe to run again. Save the scene afterwards.
 /// </summary>
 public static class XRCleanup
 {
     const string OPENXR_SETTINGS = "Assets/XR/Settings/OpenXRPackageSettings.asset";
     const string LEFTOVER_LAYER_OBJECT = "Default Scene Layer";
 
-    [MenuItem("Tools/Einstein Telescope/XR/Restanten Composition Layers opruimen")]
+    [MenuItem("Tools/Einstein Telescope/XR/Clean up Composition Layers leftovers")]
     static void Cleanup()
     {
-        // 1. Feature-subassets zonder script, daarna lege plekken uit de featurelijsten halen
+        // 1. Feature sub-assets without a script, then remove empty slots from the feature lists
         int features = AssetDatabase.RemoveScriptableObjectsWithMissingScript(OPENXR_SETTINGS);
         int listEntries = 0;
         foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(OPENXR_SETTINGS))
         {
-            // Op naam, zodat dit script niet afhangt van de OpenXR-assembly
+            // By name, so this script does not depend on the OpenXR assembly
             if (!obj || obj.GetType().Name != "OpenXRSettings") continue;
             var so = new SerializedObject(obj);
             var list = so.FindProperty("features");
@@ -56,7 +56,7 @@ public static class XRCleanup
                 if (missing == 0) continue;
                 if (PrefabUtility.IsPartOfPrefabInstance(go))
                 {
-                    Debug.LogWarning($"[XRCleanup] '{go.name}' is een prefab-instantie; ruim de missing scripts op in Prefab Mode.", go);
+                    Debug.LogWarning($"[XRCleanup] '{go.name}' is a prefab instance; clean up the missing scripts in Prefab Mode.", go);
                     continue;
                 }
                 Undo.RegisterCompleteObjectUndo(go, "Remove missing scripts");
@@ -65,7 +65,7 @@ public static class XRCleanup
                 changed = true;
             }
 
-            // Alleen weghalen als er na stap 2 niets meer op zit (alleen een Transform, geen kinderen)
+            // Only remove it if nothing is left on it after step 2 (just a Transform, no children)
             foreach (var root in scene.GetRootGameObjects())
             {
                 if (root.name != LEFTOVER_LAYER_OBJECT) continue;
@@ -78,8 +78,8 @@ public static class XRCleanup
             if (changed) EditorSceneManager.MarkSceneDirty(scene);
         }
 
-        Debug.Log($"[XRCleanup] {features} OpenXR-features en {listEntries} lege verwijzingen uit {OPENXR_SETTINGS} gehaald, " +
-                  $"{components} missing scripts en {objects} '{LEFTOVER_LAYER_OBJECT}'-object(en) uit de open scene(s). " +
-                  "Sla de scene op.");
+        Debug.Log($"[XRCleanup] Removed {features} OpenXR features and {listEntries} empty references from {OPENXR_SETTINGS}, " +
+                  $"{components} missing scripts and {objects} '{LEFTOVER_LAYER_OBJECT}' object(s) from the open scene(s). " +
+                  "Save the scene.");
     }
 }

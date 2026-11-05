@@ -4,17 +4,17 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 /// <summary>
-/// Tools > Einstein Telescope > Belichting > Post-processing afstemmen op foto's
-/// Zet de Global Volume van de open scene op een startpunt dat lijkt op de foto's van ETpathfinder:
-/// een heldere, witte cleanroom (high-key) met neutrale kleuren en zacht gloeiende LED-panelen.
-///  - Tonemapping Neutral i.p.v. ACES: ACES drukt wit naar grijs en maakt alles vlakker en donkerder.
-///  - Iets meer contrast en iets minder verzadiging, zoals op de foto's.
-///  - Bloom alleen op wat echt helderder is dan wit (LED-panelen, schermen).
-/// Daarna in de headset bijstellen; alle waarden staan gewoon in de Inspector van het volume profile.
+/// Tools > Einstein Telescope > Lighting > Match post-processing to photos
+/// Sets the Global Volume of the open scene to a starting point that resembles the ETpathfinder photos:
+/// a bright, white cleanroom (high-key) with neutral colours and softly glowing LED panels.
+///  - Neutral tonemapping instead of ACES: ACES pushes white towards grey and makes everything flatter and darker.
+///  - Slightly more contrast and slightly less saturation, as in the photos.
+///  - Bloom only on what is really brighter than white (LED panels, screens).
+/// Fine-tune afterwards in the headset; all values are simply in the Inspector of the volume profile.
 /// </summary>
 public static class HallLookSetup
 {
-    [MenuItem("Tools/Einstein Telescope/Belichting/Post-processing afstemmen op foto's")]
+    [MenuItem("Tools/Einstein Telescope/Lighting/Match post-processing to photos")]
     static void Apply()
     {
         Volume volume = null;
@@ -22,7 +22,7 @@ public static class HallLookSetup
             if (v.isGlobal && v.sharedProfile) { volume = v; break; }
         if (!volume)
         {
-            Debug.LogError("[HallLookSetup] Geen Global Volume met profile gevonden in de open scene.");
+            Debug.LogError("[HallLookSetup] No Global Volume with a profile found in the open scene.");
             return;
         }
         var profile = volume.sharedProfile;
@@ -41,10 +41,10 @@ public static class HallLookSetup
 
         EditorUtility.SetDirty(profile);
         AssetDatabase.SaveAssets();
-        Debug.Log($"[HallLookSetup] {profile.name} bijgewerkt (Neutral tonemapping, contrast +10, saturation -5, bloom 0.35).", profile);
+        Debug.Log($"[HallLookSetup] Updated {profile.name} (Neutral tonemapping, contrast +10, saturation -5, bloom 0.35).", profile);
     }
 
-    // Een volume-component moet als sub-asset in het profile staan, anders is hij na herstarten weg
+    // A volume component has to be a sub-asset of the profile, otherwise it is gone after a restart
     static T GetOrAdd<T>(VolumeProfile profile) where T : VolumeComponent
     {
         if (profile.TryGet(out T component))

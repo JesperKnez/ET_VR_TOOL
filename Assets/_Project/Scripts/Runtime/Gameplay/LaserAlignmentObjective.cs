@@ -9,6 +9,10 @@ namespace EinsteinTelescope.Laser
     /// (a real interferometer must hold alignment before it can "lock").
     /// Also tracks time and mistakes for a star score, and can describe the current situation
     /// in plain text so an AI tutor (LLM) can give grounded hints.
+    ///
+    /// Timer: <see cref="StartObjective"/> starts it. The level manager calls it when the briefing is closed;
+    /// with <c>startOnFirstMirrorMove</c> it also starts as soon as the player moves a mirror, so a player who
+    /// leaves the briefing open can still finish the level.
     /// </summary>
     [DefaultExecutionOrder(LaserExecutionOrder.GameLogic + 10)]
     public class LaserAlignmentObjective : MonoBehaviour
@@ -22,14 +26,22 @@ namespace EinsteinTelescope.Laser
         [Tooltip("Start timing automatically when the scene starts. Otherwise call StartObjective().")]
         [SerializeField] private bool startAutomatically = true;
 
+        [Tooltip("Start the timer when the player first moves a mirror, if it is not running yet " +
+                 "(e.g. the briefing is still open). Without it the level can only be won after the briefing is closed.")]
+        [SerializeField] private bool startOnFirstMirrorMove = true;
+
         [Tooltip("Optional. Used to count mistakes for the score and the tutor report.")]
         [SerializeField] private LaserSafetyMonitor safetyMonitor = null;
 
         [Header("Scoring")]
-        [Tooltip("Finishing faster than this with at most 1 mistake gives 3 stars.")]
+        [Tooltip("Finishing faster than this with at most the 3-star number of mistakes gives 3 stars. " +
+                 "A level can override it (LaserLevel.parTimeSeconds).")]
         [SerializeField, Min(1f)] private float parTimeSeconds = 120f;
 
-        [Tooltip("Up to this many mistakes still gives 2 stars.")]
+        [Tooltip("Up to this many mistakes still gives 3 stars (within the par time).")]
+        [SerializeField, Min(0)] private int threeStarMistakeLimit = 1;
+
+        [Tooltip("Up to this many mistakes still gives 2 stars (within twice the par time).")]
         [SerializeField, Min(0)] private int twoStarMistakeLimit = 4;
 
         [Header("Events")]
@@ -47,13 +59,30 @@ namespace EinsteinTelescope.Laser
         private float m_CompletionTime;
         private float m_HoldTimer;
         private int m_Stars;
+        private float m_ParTimeOverride = -1f;
 
         public bool IsRunning => m_Running;
         public bool IsCompleted => m_Completed;
+
+        /// <summary>True when the level is loaded but the timer has not started yet (briefing open, no mirror moved).</summary>
+        public bool IsWaitingToStart => !m_Running && !m_Completed;
+
         public int Stars => m_Stars;
         public float HoldProgress => holdSeconds <= 0f ? (AllTargetsAligned() ? 1f : 0f) : Mathf.Clamp01(m_HoldTimer / holdSeconds);
+
+        /// <summary>Seconds everything must stay aligned.</summary>
+        public float HoldSeconds => holdSeconds;
+
+        /// <summary>Seconds everything has been aligned so far (0 when not aligned).</summary>
+        public float HoldElapsedSeconds => Mathf.Min(m_HoldTimer, holdSeconds);
+
         public float ElapsedSeconds => m_Completed ? m_CompletionTime - m_StartTime : m_Running ? Time.time - m_StartTime : 0f;
         public int Mistakes => safetyMonitor != null ? safetyMonitor.TotalIncidents : 0;
+
+        /// <summary>3-star time limit of the current level (seconds). 2 stars: twice this.</summary>
+        public float ParTimeSeconds => m_ParTimeOverride > 0f ? m_ParTimeOverride : parTimeSeconds;
+        public int ThreeStarMistakeLimit => threeStarMistakeLimit;
+        public int TwoStarMistakeLimit => twoStarMistakeLimit;
 
         public UnityEvent OnCompleted => onCompleted;
         public UnityEvent<int> OnStarsAwarded => onStarsAwarded;
@@ -83,6 +112,28 @@ namespace EinsteinTelescope.Laser
         /// <summary>The detectors that must be aligned at the same time.</summary>
         public System.Collections.Generic.IReadOnlyList<LaserTarget> RequiredTargets => requiredTargets;
 
+        /// <summary>
+        /// 3-star time limit for the current level, in seconds. 0 or less = the default set on this component.
+        /// Called by the level manager when a level loads (before the briefing is shown).
+        /// </summary>
+        public void SetParTime(float seconds)
+        {
+            m_ParTimeOverride = seconds > 0f ? seconds : -1f;
+        }
+
+        /// <summary>
+        /// The star rules of the current level in one short sentence, e.g.
+        /// "3 stars: within 2:00 with at most 1 safety incident. 2 stars: within 4:00 with at most 4. Otherwise 1 star."
+        /// </summary>
+        public string DescribeStarRules()
+        {
+            float par = ParTimeSeconds;
+            return "3 stars: within " + LaserBestTimes.FormatTime(par) + " with at most " + threeStarMistakeLimit +
+                   (threeStarMistakeLimit == 1 ? " safety incident" : " safety incidents") +
+                   ". 2 stars: within " + LaserBestTimes.FormatTime(par * 2f) + " with at most " + twoStarMistakeLimit +
+                   ". Otherwise 1 star.";
+        }
+
         /// <summary>Back to "not started" (no timer, not completed), e.g. while the level briefing is shown.</summary>
         public void ResetObjective()
         {
@@ -97,12 +148,43 @@ namespace EinsteinTelescope.Laser
             m_Running = false;
         }
 
+        /// <summary>Complete the objective right now, as if everything was aligned (testing and demos).</summary>
+        public void ForceComplete()
+        {
+            if (m_Completed)
+            {
+                return;
+            }
+
+            if (!m_Running)
+            {
+                StartObjective();
+            }
+
+            Complete();
+        }
+
+        /// <summary>Number of required targets that count: assigned and active in the scene.</summary>
+        public int CountedTargetCount()
+        {
+            int count = 0;
+            foreach (LaserTarget target in requiredTargets)
+            {
+                if (Counts(target))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
         public int AlignedTargetCount()
         {
             int count = 0;
             foreach (LaserTarget target in requiredTargets)
             {
-                if (target != null && target.IsAligned)
+                if (Counts(target) && target.IsAligned)
                 {
                     count++;
                 }
@@ -113,13 +195,15 @@ namespace EinsteinTelescope.Laser
 
         public bool AllTargetsAligned()
         {
-            if (requiredTargets.Length == 0)
-            {
-                return false;
-            }
-
-            return AlignedTargetCount() == requiredTargets.Length;
+            int counted = CountedTargetCount();
+            return counted > 0 && AlignedTargetCount() == counted;
         }
+
+        /// <summary>
+        /// A target that is not assigned or switched off can never be aligned; it would make the level impossible,
+        /// so it is ignored.
+        /// </summary>
+        private static bool Counts(LaserTarget target) => target != null && target.isActiveAndEnabled;
 
         /// <summary>
         /// Plain-text snapshot of the level for the AI tutor. Send it along with the player's
@@ -131,7 +215,12 @@ namespace EinsteinTelescope.Laser
             report.AppendLine("LASER ALIGNMENT STATUS");
             report.Append("Objective: ").Append(m_Completed ? "completed" : m_Running ? "in progress" : "not started")
                   .Append(", time ").Append(LaserText.Number(ElapsedSeconds, 0)).Append(" s, aligned targets ")
-                  .Append(AlignedTargetCount()).Append('/').Append(requiredTargets.Length).AppendLine(".");
+                  .Append(AlignedTargetCount()).Append('/').Append(CountedTargetCount()).AppendLine(".");
+            report.Append("Star rules: ").AppendLine(DescribeStarRules());
+            if (m_Completed)
+            {
+                report.Append("Stars earned: ").Append(m_Stars).AppendLine(" of 3.");
+            }
 
             foreach (LaserTarget target in requiredTargets)
             {
@@ -189,6 +278,24 @@ namespace EinsteinTelescope.Laser
             return report.ToString();
         }
 
+        private void OnEnable()
+        {
+            MirrorMount.AnyPlayerInput += HandlePlayerInput;
+        }
+
+        private void OnDisable()
+        {
+            MirrorMount.AnyPlayerInput -= HandlePlayerInput;
+        }
+
+        private void HandlePlayerInput(MirrorMount mount)
+        {
+            if (startOnFirstMirrorMove && IsWaitingToStart && CountedTargetCount() > 0)
+            {
+                StartObjective();
+            }
+        }
+
         private void Start()
         {
             if (startAutomatically)
@@ -223,9 +330,15 @@ namespace EinsteinTelescope.Laser
 
         private void Complete()
         {
+            if (m_Completed)
+            {
+                return;
+            }
+
             m_Completed = true;
             m_Running = false;
             m_CompletionTime = Time.time;
+            m_HoldTimer = holdSeconds;
             m_Stars = CalculateStars(ElapsedSeconds, Mistakes);
             onCompleted.Invoke();
             onStarsAwarded.Invoke(m_Stars);
@@ -233,12 +346,13 @@ namespace EinsteinTelescope.Laser
 
         private int CalculateStars(float seconds, int mistakes)
         {
-            if (seconds <= parTimeSeconds && mistakes <= 1)
+            float par = ParTimeSeconds;
+            if (seconds <= par && mistakes <= threeStarMistakeLimit)
             {
                 return 3;
             }
 
-            if (seconds <= parTimeSeconds * 2f && mistakes <= twoStarMistakeLimit)
+            if (seconds <= par * 2f && mistakes <= twoStarMistakeLimit)
             {
                 return 2;
             }

@@ -10,7 +10,7 @@ namespace EinsteinTelescope.Laser
     /// clash with the XR Device Simulator (which uses WASD, Q/E, Tab, Space, Shift and more):
     /// Arrow keys: tilt the selected mirror (tap = one step, hold = keep moving after a moment).
     /// Comma / Period ( &lt; &gt; ): previous / next mirror. Slash: fine/coarse steps. Backspace: reset mirror.
-    /// L: laser shutter. K: switch green 532 nm / infrared 1064 nm laser. I: IR viewer. P: print the AI-tutor report.
+    /// L: laser shutter. P: print the AI-tutor report.
     /// N: next level. H: open / close the briefing screen. U: undo the last move. T: alignment tone on / off.
     /// Remove or disable this component in the final build.
     /// </summary>
@@ -29,7 +29,7 @@ namespace EinsteinTelescope.Laser
         private float m_HoldTime;
         private bool m_Holding;
 
-        /// <summary>The laser for the shutter / wavelength keys (set by the level manager).</summary>
+        /// <summary>The laser for the shutter key (set by the level manager).</summary>
         public void SetLaser(LaserEmitter newLaser)
         {
             laser = newLaser;
@@ -49,9 +49,7 @@ namespace EinsteinTelescope.Laser
             if (WasPressed(DebugKey.NextMirror)) controlPanel.SelectNext();
             if (WasPressed(DebugKey.FineMode)) controlPanel.ToggleFineMode();
             if (WasPressed(DebugKey.Reset)) controlPanel.ResetSelectedToStart();
-            if (WasPressed(DebugKey.InfraredViewer)) LaserVisibility.SetInfraredViewer(!LaserVisibility.InfraredViewerActive);
             if (WasPressed(DebugKey.Shutter) && laser != null) laser.ToggleShutter();
-            if (WasPressed(DebugKey.Wavelength) && laser != null) LaserControlPad.ToggleWavelength(laser);
             if (WasPressed(DebugKey.Report) && objective != null) Debug.Log(objective.BuildStatusReport());
             if (WasPressed(DebugKey.NextLevel) && levelManager != null) levelManager.NextLevel();
             if (WasPressed(DebugKey.Briefing) && levelManager != null) levelManager.ToggleBriefing();
@@ -94,9 +92,7 @@ namespace EinsteinTelescope.Laser
             NextMirror,
             FineMode,
             Reset,
-            InfraredViewer,
             Shutter,
-            Wavelength,
             Report,
             NextLevel,
             Briefing,
@@ -132,9 +128,7 @@ namespace EinsteinTelescope.Laser
                 case DebugKey.NextMirror: return keyboard.periodKey.wasPressedThisFrame;
                 case DebugKey.FineMode: return keyboard.slashKey.wasPressedThisFrame;
                 case DebugKey.Reset: return keyboard.backspaceKey.wasPressedThisFrame;
-                case DebugKey.InfraredViewer: return keyboard.iKey.wasPressedThisFrame;
                 case DebugKey.Shutter: return keyboard.lKey.wasPressedThisFrame;
-                case DebugKey.Wavelength: return keyboard.kKey.wasPressedThisFrame;
                 case DebugKey.Report: return keyboard.pKey.wasPressedThisFrame;
                 case DebugKey.NextLevel: return keyboard.nKey.wasPressedThisFrame;
                 case DebugKey.Briefing: return keyboard.hKey.wasPressedThisFrame;
@@ -159,9 +153,7 @@ namespace EinsteinTelescope.Laser
                 case DebugKey.NextMirror: return Input.GetKeyDown(KeyCode.Period);
                 case DebugKey.FineMode: return Input.GetKeyDown(KeyCode.Slash);
                 case DebugKey.Reset: return Input.GetKeyDown(KeyCode.Backspace);
-                case DebugKey.InfraredViewer: return Input.GetKeyDown(KeyCode.I);
                 case DebugKey.Shutter: return Input.GetKeyDown(KeyCode.L);
-                case DebugKey.Wavelength: return Input.GetKeyDown(KeyCode.K);
                 case DebugKey.Report: return Input.GetKeyDown(KeyCode.P);
                 case DebugKey.NextLevel: return Input.GetKeyDown(KeyCode.N);
                 case DebugKey.Briefing: return Input.GetKeyDown(KeyCode.H);
