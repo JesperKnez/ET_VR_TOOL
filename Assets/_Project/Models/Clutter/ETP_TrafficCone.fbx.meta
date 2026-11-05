@@ -3,7 +3,22 @@ guid: 1bc0de8fc1301444a91fdf379971237f
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_Orange
+    second: {fileID: 2100000, guid: b4962fa9f8851694aaf58800a527d707, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_White
+    second: {fileID: 2100000, guid: b5a37322b4583c64abb2f35feb91749b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

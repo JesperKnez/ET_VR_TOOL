@@ -3,7 +3,57 @@ guid: ebdfc251a7cd4e44c89bd36d0250699c
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Controller_Blue
+    second: {fileID: 2100000, guid: 12e8023a3ea8e2545bf940ee77f99941, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: LED_Red
+    second: {fileID: 2100000, guid: 17e83bb576d1d454081d63e3014c2ea7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Label_White
+    second: {fileID: 2100000, guid: 0d9f414c5d5efd64aa5db546572fc40b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_LightGrey
+    second: {fileID: 2100000, guid: e7bd80af51f9ed649bda7ac33ba17fd4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_Red
+    second: {fileID: 2100000, guid: 69f2f88aa26b277409e6f7d3f8e84ed1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_Yellow
+    second: {fileID: 2100000, guid: da2856a96f51a6946b7cce36513eaa7e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_DarkGrey
+    second: {fileID: 2100000, guid: d404c2add3c6ee94a99c24407645c282, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Galvanised
+    second: {fileID: 2100000, guid: e78215535cb0e564f91d853484739513, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Stainless
+    second: {fileID: 2100000, guid: d610b0c74bba8d047b7fff4a1cd0d06a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

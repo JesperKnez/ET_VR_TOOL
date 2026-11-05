@@ -3,7 +3,22 @@ guid: 68b6494baaffce74fac452d4a4d64d1d
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Aluminium
+    second: {fileID: 2100000, guid: 9a4d4993943eb36418ebf8439ef409a6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_DarkGrey
+    second: {fileID: 2100000, guid: d404c2add3c6ee94a99c24407645c282, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

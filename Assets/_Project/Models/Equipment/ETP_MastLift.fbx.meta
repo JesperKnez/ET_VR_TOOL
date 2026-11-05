@@ -3,7 +3,92 @@ guid: c7fc93dc57370cb46a2da452bae7d42a
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Battery_Brown
+    second: {fileID: 2100000, guid: 9616a00845a53df4193720cc180fab32, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Beacon_Amber
+    second: {fileID: 2100000, guid: ffd6200d797590f46b5705bdacb2ceb7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Button_Red
+    second: {fileID: 2100000, guid: 6f8705ff76d19af4091b44d58a074263, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Chain_DarkSteel
+    second: {fileID: 2100000, guid: 5d720b3675f39ab4f83447647e2b7c93, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foam_Grey
+    second: {fileID: 2100000, guid: cf9da80c318a90546aef74008ccee4c8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Grating_Orange
+    second: {fileID: 2100000, guid: 74b1fbccfaa2d5140b4b40c960544f02, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Label_White
+    second: {fileID: 2100000, guid: 0d9f414c5d5efd64aa5db546572fc40b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lift_ChassisBeige
+    second: {fileID: 2100000, guid: f088590f0cb2fa444b6e354b2a8a01cc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lift_Cream
+    second: {fileID: 2100000, guid: 11c5f00a79ffb574e89e73c21a148d87, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lift_Orange
+    second: {fileID: 2100000, guid: 423d0aea3bc1e46459f06c97da869643, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_DarkGrey
+    second: {fileID: 2100000, guid: d404c2add3c6ee94a99c24407645c282, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Sensor_Blue
+    second: {fileID: 2100000, guid: ffa15cd0f7d77cf4fa1a18febc7398a3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Bright
+    second: {fileID: 2100000, guid: 903bede7f6e041944a8da778ce246b84, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Sticker_Yellow
+    second: {fileID: 2100000, guid: e25933aed310a3f448d7bce30ada4e2e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: WheelCover_White
+    second: {fileID: 2100000, guid: 5c803613d4903a045a87128c6505c2e9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Wheel_Hub
+    second: {fileID: 2100000, guid: db15198c22f41f740a99fae3599c2daa, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

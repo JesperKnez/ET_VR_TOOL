@@ -3,7 +3,17 @@ guid: 1f7d0634d2e15e14eb8a3f8174035227
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Handle_StorageBox_Clear
+    second: {fileID: 2100000, guid: edc4685d9c2f1e64ca33ebddd64ab50f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_StorageBox_Clear
+    second: {fileID: 2100000, guid: 2e495c51649fa8f4ca402f2dfde1c865, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -3,7 +3,37 @@ guid: 4d10c8e2ce5f27c46b052ecfa93d160a
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Aluminium
+    second: {fileID: 2100000, guid: 9a4d4993943eb36418ebf8439ef409a6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Label_White
+    second: {fileID: 2100000, guid: 0d9f414c5d5efd64aa5db546572fc40b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_LightGrey
+    second: {fileID: 2100000, guid: e7bd80af51f9ed649bda7ac33ba17fd4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_DarkGrey
+    second: {fileID: 2100000, guid: d404c2add3c6ee94a99c24407645c282, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Brushed
+    second: {fileID: 2100000, guid: 16a602a96c9faa047b272c3fdcc0697e, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
