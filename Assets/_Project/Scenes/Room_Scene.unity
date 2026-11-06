@@ -10013,6 +10013,12 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   maxDistance: 10
+  hand: 5
+  haptics: 1
+  hoverAmplitude: 0.1
+  hoverDuration: 0.03
+  pressAmplitude: 0.5
+  pressDuration: 0.08
 --- !u!1 &452920905
 GameObject:
   m_ObjectHideFlags: 0

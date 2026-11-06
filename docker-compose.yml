@@ -1,0 +1,23 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=60m   # keep the model loaded for a whole demo session
+      # Lumi sends a long system prompt plus conversation memory; the default 2-4k context cut it off
+      - OLLAMA_CONTEXT_LENGTH=8192
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama:
