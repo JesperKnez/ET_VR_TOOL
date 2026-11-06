@@ -129,3 +129,6 @@ InitTestScene*.unity*
 # Unity herstel-autosaves van scenes
 /Assets/_Recovery/
 /Assets/_Recovery.meta
+
+# IDE settings (Rider / IntelliJ), also inside Assets
+**/.idea/
