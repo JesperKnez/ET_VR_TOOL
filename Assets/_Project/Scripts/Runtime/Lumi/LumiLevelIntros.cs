@@ -10,7 +10,7 @@ namespace EinsteinTelescope.Lumi
     public static class LumiLevelIntros
     {
         public const string Michelson =
-            "Hi, I'm Lumi! This is ETpathfinder, a real research lab. Your job is to steer the two end mirrors " +
+            "Hi, I'm Lumi! This is E.T. Pathfinder, a real research lab. Your job is to steer the two end mirrors " +
             "until both beams hit the centre of the detector. To press the monitor's buttons, aim and pull the trigger.";
 
         public const string BeamWalking =
