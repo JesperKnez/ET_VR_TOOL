@@ -16,9 +16,9 @@ namespace EinsteinTelescope.Laser
         public const string Controls =
             "<b>Buttons</b>   Aim your controller at a button on the curved monitor and pull the <b>trigger</b>.\n" +
             "•  <b>PREV / NEXT</b>: choose a mirror. It gets a glowing ring and the beam coming off it turns <b>cyan</b>.\n" +
-            "•  <b>▲ ▼ ◄ ►</b>: tilt that mirror. Tap = one step, hold = keep moving.\n" +
+            "•  <b>▲ ▼ ◄ ►</b>: tilt that mirror; the dot moves the way the arrow points. Tap = one step, hold = keep moving.\n" +
             "•  Centre button <b>COARSE / FINE</b>: big steps to find the target, small steps for the last bit.\n" +
-            "•  <b>UNDO</b>: take back your last move.   <b>RESET</b>: mirror back to its start.   <b>SHUTTER</b>: laser on / off.\n" +
+            "•  <b>UNDO</b>: take back your last move.   <b>RESET</b>: mirror back to its start.\n" +
             "•  <b>HELP</b>: open this screen again.   <b>NEXT LEVEL</b>: skip to the next level.\n" +
             "•  Or hold <b>GRIP</b> and push the thumbstick to tilt.  A / X = coarse / fine,  B / Y = next mirror.\n\n" +
             "<b>Mirror camera</b>   Shows the beam of the mirror you steer. <b>VIEW</b> switches the picture:\n" +
@@ -26,6 +26,7 @@ namespace EinsteinTelescope.Laser
             "•  <b>Cyan line</b> = your beam.  <b>Ring</b> = TARGET (the next iris or the detector).  <b>Dot</b> = BEAM LANDS HERE.\n" +
             "•  The <b>arrow</b> points from the dot to the ring: move the beam that way. Green ring = on target.\n" +
             "•  In CLOSE-UP the banner tells you which buttons to press, for example  \"Press ► 3x and ▲ 2x\".\n" +
+            "•  The small circles at the bottom of CLOSE-UP are the mirrors on the way: keep their dot inside. Amber = near the edge.\n" +
             "•  NO LASER REACHES THIS MIRROR: press PREV and steer the mirror before it first.\n\n" +
             "<b>Detector screen</b>   Where the beams land: orange = not yet, green = centred. Four equal bars = centred.\n" +
             "<b>Beam cameras</b>   Close-ups of the irises. The text on the monitor always says what to do next.";

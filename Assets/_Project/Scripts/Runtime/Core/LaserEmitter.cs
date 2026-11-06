@@ -216,6 +216,18 @@ namespace EinsteinTelescope.Laser
             m_BackReflectedPower = 0f;
         }
 
+        /// <summary>
+        /// Traces the beam right now as a preview: detectors, incidents and power readouts ignore it. For tools that
+        /// want to know where the beam would go with the optics in another pose (the mirror camera learns every
+        /// mirror's path at the designed angles when a level starts). Call it again after restoring the optics, so
+        /// <see cref="Segments"/> describes the real beam again.
+        /// </summary>
+        public void TracePreviewNow()
+        {
+            Physics.SyncTransforms();   // the optics may have moved within this frame
+            Trace(true);
+        }
+
         /// <summary>Traces the full beam tree for this frame.</summary>
         private void Trace(bool isPreview)
         {

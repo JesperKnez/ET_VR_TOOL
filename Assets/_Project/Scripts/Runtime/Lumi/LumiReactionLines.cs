@@ -11,7 +11,7 @@ namespace EinsteinTelescope.Lumi
     {
         public const string HintOpening = "Need a hint? ";
 
-        public const string LaserOff = "The laser is off. Press SHUTTER to turn it on.";
+        public const string LaserOff = "The laser is off for a moment. It switches back on by itself.";
         public const string NoLaserOnMirror = "No laser reaches this mirror yet. Press PREV and steer the mirror before it first.";
         public const string NoLightOnDetector = "No light reaches the detector yet. Steer the end mirrors until the beams get there.";
         public const string MissingBeam = "One beam is there, but not the other. Press NEXT and bring the second beam to the detector too.";

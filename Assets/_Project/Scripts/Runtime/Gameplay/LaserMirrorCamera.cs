@@ -472,8 +472,116 @@ namespace EinsteinTelescope.Laser
             }
         }
 
+        // ----- Calibration: every mirror's path at the designed angles, when a level starts ----------------------
+        //
+        // The goal ring, the arrow map and the optics gauges come from the path the beam takes from the selected mirror
+        // to its target. That path is only known once the beam really reaches the target. A mirror whose beam starts
+        // off (level 1, end mirror Y) could get lost after a few presses: no ring, no guide, and the arrows fell back
+        // to the mirror's raw (mirrored) axes. So when a level starts, every mirror of the panel is put on its designed
+        // angle for a moment (within one frame, nothing is drawn), a preview beam is traced, each mirror's path is
+        // learned, and everything is put back. The guide then works from the first press, however lost the beam is.
+
+        private LaserLevelManager m_LevelManager;
+        private int m_CalibratedLevel = int.MinValue;
+        private float m_CalibrateAt = -1f;
+        private bool m_Calibrating;
+
+        private void CheckCalibration()
+        {
+            if (m_LevelManager == null) m_LevelManager = FindAnyObjectByType<LaserLevelManager>();
+            int level = m_LevelManager != null ? m_LevelManager.CurrentLevelIndex : -1;
+            if (level != m_CalibratedLevel)
+            {
+                m_CalibratedLevel = level;
+                m_CalibrateAt = Time.unscaledTime + 0.3f;   // let the level finish loading (mirrors, targets, lasers)
+            }
+
+            if (m_CalibrateAt >= 0f && Time.unscaledTime >= m_CalibrateAt)
+            {
+                m_CalibrateAt = -1f;
+                Calibrate();
+            }
+        }
+
+        private void Calibrate()
+        {
+            MirrorControlPanel panel = controlPanel != null ? controlPanel : MirrorControlPanel.FirstActive;
+            if (panel == null || LaserEmitter.ActiveEmitters.Count == 0) return;
+
+            var mirrors = new System.Collections.Generic.List<MirrorMount>();
+            for (int i = 0; i < panel.MirrorCount; i++)
+            {
+                if (panel.Mirrors[i] != null) mirrors.Add(panel.Mirrors[i]);
+            }
+
+            // 1. Every mirror on its designed angle (same maths as MirrorMount: nominal * yaw * pitch)
+            var saved = new Quaternion[mirrors.Count];
+            for (int i = 0; i < mirrors.Count; i++)
+            {
+                Transform mount = mirrors[i].transform;
+                saved[i] = mount.localRotation;
+                Quaternion yaw = Quaternion.AngleAxis(mirrors[i].ActualYaw, Vector3.up);
+                Quaternion pitch = Quaternion.AngleAxis(-mirrors[i].ActualPitch, Vector3.right);
+                mount.localRotation = saved[i] * Quaternion.Inverse(yaw * pitch);
+            }
+
+            var emitters = LaserEmitter.ActiveEmitters;
+            for (int e = 0; e < emitters.Count; e++) emitters[e].TracePreviewNow();
+
+            // 2. Learn each mirror's path (TryTrace stores it in m_PathCache) and its arrow map
+            MirrorMount keepMirror = m_GuideMirror;
+            Transform keepSurface = m_GuideSurface;
+            Vector3 keepIncoming = m_GuideIncoming, keepNormal = m_GuideNormal;
+            bool keepHasBeam = m_GuideHasBeam;
+            int learned = 0;
+            m_Calibrating = true;
+            try
+            {
+                foreach (MirrorMount mirror in mirrors)
+                {
+                    Collider optic = mirror.GetComponentInChildren<Collider>();
+                    LaserMirror coating = optic != null ? optic.GetComponentInParent<LaserMirror>() : null;
+                    Transform surface = coating != null ? coating.Surface : optic != null ? optic.transform : mirror.transform;
+                    Vector3 normal = surface.forward;
+                    if (!TryFindIncomingBeam(optic, out Vector3 hitPoint, out Vector3 incoming) || Vector3.Dot(incoming, normal) >= 0f) continue;
+
+                    m_GuideMirror = mirror;
+                    m_GuideSurface = surface;
+                    m_GuideIncoming = incoming;
+                    m_GuideNormal = normal;
+                    m_GuideHasBeam = true;
+                    Vector3 outgoing = LaserOptics.Reflect(incoming, normal);
+                    if (TryTrace(hitPoint + outgoing * 0.01f, outgoing, out _, out _, out _, out bool reached) && reached)
+                    {
+                        UpdateArrowMap();
+                        learned++;
+                    }
+                }
+            }
+            finally
+            {
+                m_Calibrating = false;
+
+                // 3. Everything back as it was
+                for (int i = 0; i < mirrors.Count; i++)
+                {
+                    if (mirrors[i] != null) mirrors[i].transform.localRotation = saved[i];
+                }
+
+                for (int e = 0; e < emitters.Count; e++) emitters[e].TracePreviewNow();
+                m_GuideMirror = keepMirror;
+                m_GuideSurface = keepSurface;
+                m_GuideIncoming = keepIncoming;
+                m_GuideNormal = keepNormal;
+                m_GuideHasBeam = keepHasBeam;
+            }
+
+            Debug.Log($"[LaserMirrorCamera] Learned the path of {learned}/{mirrors.Count} mirrors at their designed angles.", this);
+        }
+
         private void LateUpdate()
         {
+            CheckCalibration();
             MirrorControlPanel panel = controlPanel != null ? controlPanel : MirrorControlPanel.FirstActive;
             MirrorMount mirror = panel != null ? panel.SelectedMirror : null;
             m_GuideValid = false;
@@ -1005,13 +1113,16 @@ namespace EinsteinTelescope.Laser
             float step = m_GuideMirror.CurrentStepDegrees;
             Transform mount = m_GuideMirror.transform;
             Quaternion saved = mount.localRotation;
-            Quaternion yawRotation = Quaternion.AngleAxis(m_GuideMirror.ActualYaw, Vector3.up);
-            Quaternion pitchRotation = Quaternion.AngleAxis(-m_GuideMirror.ActualPitch, Vector3.right);
+            // While calibrating (Calibrate) the mount is held at its designed angle, whatever MirrorMount says
+            float yawNow = m_Calibrating ? 0f : m_GuideMirror.ActualYaw;
+            float pitchNow = m_Calibrating ? 0f : m_GuideMirror.ActualPitch;
+            Quaternion yawRotation = Quaternion.AngleAxis(yawNow, Vector3.up);
+            Quaternion pitchRotation = Quaternion.AngleAxis(-pitchNow, Vector3.right);
             Quaternion nominal = saved * Quaternion.Inverse(yawRotation * pitchRotation);
 
-            mount.localRotation = nominal * Quaternion.AngleAxis(m_GuideMirror.ActualYaw + step, Vector3.up) * pitchRotation;
+            mount.localRotation = nominal * Quaternion.AngleAxis(yawNow + step, Vector3.up) * pitchRotation;
             Vector3 yawNormal = m_GuideSurface.forward;
-            mount.localRotation = nominal * yawRotation * Quaternion.AngleAxis(-(m_GuideMirror.ActualPitch + step), Vector3.right);   // pitch up = -angle
+            mount.localRotation = nominal * yawRotation * Quaternion.AngleAxis(-(pitchNow + step), Vector3.right);   // pitch up = -angle
             Vector3 pitchNormal = m_GuideSurface.forward;
             mount.localRotation = saved;
 
@@ -1300,7 +1411,6 @@ namespace EinsteinTelescope.Laser
         }
 
         private readonly System.Collections.Generic.List<PathOptic> m_PathOptics = new System.Collections.Generic.List<PathOptic>();
-        private readonly System.Collections.Generic.List<PathOptic> m_CachedOptics = new System.Collections.Generic.List<PathOptic>();
         private readonly System.Collections.Generic.List<Vector3> m_OpticHits = new System.Collections.Generic.List<Vector3>();   // x, y: beam on the optic (-1..1 = inside), z: 1 = known
         private readonly System.Collections.Generic.List<RectTransform> m_Gauges = new System.Collections.Generic.List<RectTransform>();
         private Sprite m_RingSprite, m_DiscSprite;
@@ -1573,23 +1683,27 @@ namespace EinsteinTelescope.Laser
             Vector3 targetPoint;
             Vector3 landingPoint;
             bool useCache = false;
+            MirrorPathCache cached = default;
             if (reached)
             {
                 targetPoint = target.Surface.position;
                 landingPoint = last.End;
                 BuildFold(path, m_Fold);
                 BuildPathOptics(path, m_PathOptics);
-                m_CachedFoldMirror = m_GuideMirror;
-                m_CachedFoldTarget = target;
-                m_CachedFold.Clear();
-                m_CachedFold.AddRange(m_Fold);
-                m_CachedOptics.Clear();
-                m_CachedOptics.AddRange(m_PathOptics);
+                if (m_GuideMirror != null)
+                {
+                    m_PathCache[m_GuideMirror] = new MirrorPathCache
+                    {
+                        Target = target,
+                        Fold = new System.Collections.Generic.List<FoldStep>(m_Fold),
+                        Optics = new System.Collections.Generic.List<PathOptic>(m_PathOptics)
+                    };
+                }
             }
             else
             {
-                useCache = m_CachedFoldMirror == m_GuideMirror && m_GuideMirror != null && m_CachedFoldTarget != null && m_CachedFoldTarget.isActiveAndEnabled;
-                target = useCache ? m_CachedFoldTarget : GuessTarget(last.Start, lastDirection);
+                useCache = m_GuideMirror != null && m_PathCache.TryGetValue(m_GuideMirror, out cached) && cached.Target != null && cached.Target.isActiveAndEnabled;
+                target = useCache ? cached.Target : GuessTarget(last.Start, lastDirection);
                 if (target == null)
                 {
                     return false;
@@ -1600,9 +1714,9 @@ namespace EinsteinTelescope.Laser
                 if (useCache)
                 {
                     m_Fold.Clear();
-                    m_Fold.AddRange(m_CachedFold);
+                    m_Fold.AddRange(cached.Fold);
                     m_PathOptics.Clear();
-                    m_PathOptics.AddRange(m_CachedOptics);
+                    m_PathOptics.AddRange(cached.Optics);
                 }
                 else
                 {
@@ -1752,9 +1866,16 @@ namespace EinsteinTelescope.Laser
         }
 
         private readonly System.Collections.Generic.List<FoldStep> m_Fold = new System.Collections.Generic.List<FoldStep>();
-        private readonly System.Collections.Generic.List<FoldStep> m_CachedFold = new System.Collections.Generic.List<FoldStep>();
-        private MirrorMount m_CachedFoldMirror;
-        private LaserTarget m_CachedFoldTarget;
+        // Per mirror: the last path that reached its target (or the one learned at the designed angles when the level
+        // starts, see Calibrate). Used when the beam currently misses, so the ring stays put and the arrows keep working.
+        private struct MirrorPathCache
+        {
+            public LaserTarget Target;
+            public System.Collections.Generic.List<FoldStep> Fold;
+            public System.Collections.Generic.List<PathOptic> Optics;
+        }
+
+        private readonly System.Collections.Generic.Dictionary<MirrorMount, MirrorPathCache> m_PathCache = new System.Collections.Generic.Dictionary<MirrorMount, MirrorPathCache>();
         private LaserTarget m_GoalTarget;
 
         /// <summary>
