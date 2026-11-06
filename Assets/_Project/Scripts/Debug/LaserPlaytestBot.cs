@@ -619,6 +619,7 @@ public class LaserPlaytestBot : MonoBehaviour
                                   " | simulated XR devices " + simulated +
                                   " | errors " + caughtErrors.Count;
                     report.AppendLine(line);
+                    yield return Shot("vc_L" + (index + 1) + "_m" + (m + 1) + "_v" + v + "_" + mirrorCamera.CurrentMode);
                     foreach (string error in caughtErrors.GetRange(0, Mathf.Min(3, caughtErrors.Count)))
                     {
                         report.AppendLine("    " + error);

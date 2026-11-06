@@ -49,6 +49,10 @@ namespace EinsteinTelescope.Laser
         private readonly IncidentTracker m_BackReflection = new IncidentTracker();
         private float m_LastLimitWarningTime = float.NegativeInfinity;
         private string m_StraySurfaceName = "";
+        private float m_LastStrayTime = float.NegativeInfinity;
+
+        [Tooltip("Clipping that starts within this many seconds after stray light (the beam coming in over an edge) is not counted and gives no warning.")]
+        [SerializeField, Min(0f)] private float enteringSeconds = 3f;
 
         public int StrayLightIncidents => m_Stray.Count;
         public int ClippingIncidents => m_Clipping.Count;
@@ -133,7 +137,11 @@ namespace EinsteinTelescope.Laser
                     break;
             }
 
-            switch (m_Clipping.Update(clipped >= clippingWarningFraction, now, mistakeGraceSeconds))
+            // A beam that starts beside a mirror must cross the mirror's edge to get onto it: clipping that starts while
+            // the beam is (or just was) off the optics is the beam coming in, not a mistake (playtest, 6 Nov 2026).
+            if (m_Stray.Active) m_LastStrayTime = now;
+            bool comingIn = now - m_LastStrayTime < enteringSeconds;
+            switch (m_Clipping.Update(clipped >= clippingWarningFraction, now, mistakeGraceSeconds, comingIn))
             {
                 case IncidentTracker.Change.Started:
                     onClippingStarted.Invoke();
@@ -200,7 +208,7 @@ namespace EinsteinTelescope.Laser
                 m_JustReset = true;
             }
 
-            public Change Update(bool isActiveNow, float now, float graceSeconds)
+            public Change Update(bool isActiveNow, float now, float graceSeconds, bool excused = false)
             {
                 Change change = Change.None;
                 if (isActiveNow && !Active)
@@ -209,8 +217,10 @@ namespace EinsteinTelescope.Laser
                     m_ActiveSince = now;
                     m_Counted = false;
                     // Seen in the very first check after a reset: it was already there, not the player's doing.
-                    m_ExistedAtReset = m_JustReset;
-                    change = Change.Started;
+                    // Seen in the very first check after a reset, or excused by the caller (the beam is just coming in
+                    // over the edge of an optic): not the player's doing, so not counted and no warning.
+                    m_ExistedAtReset = m_JustReset || excused;
+                    change = excused ? Change.None : Change.Started;
                 }
                 else if (!isActiveNow && Active)
                 {

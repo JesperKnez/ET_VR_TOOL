@@ -273,10 +273,20 @@ namespace EinsteinTelescope.Laser
             if (m_CrossH != null) m_CrossH.forceRenderingOff = !hidden;
             if (m_CrossV != null) m_CrossV.forceRenderingOff = !hidden;
 
-            GhostTower(hidden);   // every view: the tower walls must not hide the beam
+            // The towers are one big mesh: in the Overview and Top views the camera can end up inside a tank or right
+            // against its wall, and in the top-down view the tank roofs cover the optics, so the picture showed nothing
+            // but metal (also the Close-up when no beam reaches the mirror: it looks straight out of the mirror, from
+            // inside the tank). This camera simply does not draw them; the player still sees them.
+            bool hideTower = hidden;
+            for (int i = 0; i < m_TowerRenderers.Length; i++)
+            {
+                if (m_TowerRenderers[i] != null) m_TowerRenderers[i].forceRenderingOff = hideTower;
+            }
 
-            // The overhead crane hangs between the top-down camera and the floor
-            bool hideCrane = hidden && CurrentView.mode == ViewMode.BeamPath;
+            GhostTower(hidden && !hideTower);
+
+            // The overhead crane hangs between the high cameras (Top, Whole path) and the floor
+            bool hideCrane = hidden && CurrentView.mode != ViewMode.AlongBeam;
             for (int i = 0; i < m_CraneRenderers.Length; i++)
             {
                 if (m_CraneRenderers[i] != null)
@@ -697,6 +707,7 @@ namespace EinsteinTelescope.Laser
         [SerializeField] private bool showHintText = false;
 
         private RectTransform m_GuideRoot;
+        private Font m_GuideFont;
         private Image m_BannerBackground;
         private Text m_Banner, m_BannerSub, m_LabelBeam, m_LabelGoal, m_LabelDot;
         private Image m_ArrowShaft, m_ArrowHeadA, m_ArrowHeadB;
@@ -723,6 +734,7 @@ namespace EinsteinTelescope.Laser
             }
 
             Font font = titleText != null && titleText.font != null ? titleText.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            m_GuideFont = font;
             var root = new GameObject("Guide", typeof(RectTransform));
             root.layer = feedImage.gameObject.layer;
             m_GuideRoot = (RectTransform)root.transform;
@@ -880,6 +892,7 @@ namespace EinsteinTelescope.Laser
 
         private void PlaceLabels(bool on)
         {
+            if (!on) PlaceOpticGauges(false);
             m_LabelBeam.gameObject.SetActive(on);
             m_LabelGoal.gameObject.SetActive(on);
             m_LabelDot.gameObject.SetActive(on);
@@ -898,6 +911,7 @@ namespace EinsteinTelescope.Laser
                 SetLabel(m_LabelGoal, goalView, w, h, new Vector2(0f, ringPx + 34f));
                 SetLabel(m_LabelDot, dotView, w, h, new Vector2(0f, -(Mathf.Min(ringPx, 40f) + 34f)));
                 SetLabel(m_LabelBeam, beamView, w, h, new Vector2(0f, 30f));
+                PlaceOpticGauges(CurrentView.mode == ViewMode.AlongBeam);
 
                 // Arrow from the dot to the ring (only when the dot is clearly outside)
                 var goalPx = new Vector2(goalView.x * w, goalView.y * h);
@@ -1125,6 +1139,7 @@ namespace EinsteinTelescope.Laser
         private void PlaceChase(Vector3 beamOrigin, Vector3 beamDirection)
         {
             m_BeamOrigin = beamOrigin;
+            m_BeamDirection = beamDirection;
             m_GoalValid = TryTrace(beamOrigin, beamDirection, out m_GoalCentre, out m_Landing, out m_GoalTolerance, out m_GoalReached);
 
             Vector3 aim = m_GoalValid ? m_GoalCentre : beamOrigin + beamDirection * 3f;
@@ -1234,6 +1249,7 @@ namespace EinsteinTelescope.Laser
             SetColor(m_BeamMaterial, beamColor);
 
             SetOverlay(true);
+            UpdatePathOptics();
 
             m_GuideValid = true;
             m_GuideSteps = true;
@@ -1265,6 +1281,201 @@ namespace EinsteinTelescope.Laser
             feedCamera.cullingMask = on ? 1 << OverlayLayer : m_SceneMask;
             feedCamera.clearFlags = on ? CameraClearFlags.SolidColor : m_SceneClear;
             feedCamera.backgroundColor = on ? closeUpBackground : m_SceneBackground;
+        }
+
+        // ----- Close-up: the optics on the way -------------------------------------------------------------------
+        //
+        // The close-up used to show only the ring (target) and the dot (landing point), so you could not see the beam
+        // running off the edge of the next mirror on the way: unavoidable clipping incidents (playtest, 6 Nov 2026).
+        // Now every optic between this mirror and the target gets a small gauge at the bottom of the picture: a circle
+        // (the edge of that optic) with a dot where the beam hits it. White = fine, amber = near the edge, red = off.
+        // (3D circles in the picture itself were tried first: the nearby mirror was a huge arc, half out of view.)
+
+        private struct PathOptic
+        {
+            public Vector3 Centre;     // real world
+            public Vector3 Right, Up;  // the optic's own surface axes (real world)
+            public float Radius;
+            public string Name;
+        }
+
+        private readonly System.Collections.Generic.List<PathOptic> m_PathOptics = new System.Collections.Generic.List<PathOptic>();
+        private readonly System.Collections.Generic.List<PathOptic> m_CachedOptics = new System.Collections.Generic.List<PathOptic>();
+        private readonly System.Collections.Generic.List<Vector3> m_OpticHits = new System.Collections.Generic.List<Vector3>();   // x, y: beam on the optic (-1..1 = inside), z: 1 = known
+        private readonly System.Collections.Generic.List<RectTransform> m_Gauges = new System.Collections.Generic.List<RectTransform>();
+        private Sprite m_RingSprite, m_DiscSprite;
+        private Vector3 m_BeamDirection;
+
+        [Header("Close-up: optics on the way")]
+        [SerializeField] private Color opticColor = new Color(0.75f, 0.85f, 0.95f, 1f);
+        [SerializeField] private Color opticWarnColor = new Color(1f, 0.6f, 0.1f, 1f);
+        [SerializeField] private Color opticOffColor = new Color(1f, 0.2f, 0.15f, 1f);
+        [Tooltip("The gauge turns amber when the beam is further out than this fraction of the optic's radius.")]
+        [SerializeField, Range(0.3f, 1f)] private float opticWarnFraction = 0.7f;
+        [Tooltip("Size of each optic gauge, as a fraction of the picture height.")]
+        [SerializeField, Range(0.08f, 0.4f)] private float gaugeFraction = 0.2f;
+
+        /// <summary>The optics at the junctions of the path (every bounce or pass between the mirror and the target).</summary>
+        private void BuildPathOptics(System.Collections.Generic.List<int> path, System.Collections.Generic.List<PathOptic> optics)
+        {
+            optics.Clear();
+            for (int k = 1; k < path.Count; k++)
+            {
+                Collider collider = m_Segments[path[k - 1]].HitCollider;
+                if (collider == null || collider.GetComponentInParent<LaserTarget>() != null) continue;   // irises: the target ring covers it
+
+                Transform surface = collider.transform;
+                float radius = 0.05f;
+                LaserMirror mirror = collider.GetComponentInParent<LaserMirror>();
+                LaserBeamSplitter splitter = collider.GetComponentInParent<LaserBeamSplitter>();
+                if (mirror != null) { surface = mirror.Surface; radius = mirror.MirrorRadius; }
+                else if (splitter != null) { surface = splitter.Surface; radius = splitter.Radius; }
+
+                MirrorMount mount = collider.GetComponentInParent<MirrorMount>();
+                string name = mount != null ? mount.DisplayName : splitter != null ? "Beam splitter" : collider.name;
+                optics.Add(new PathOptic { Centre = surface.position, Right = surface.right, Up = surface.up, Radius = radius, Name = name.ToUpperInvariant() });
+            }
+        }
+
+        /// <summary>Where the real beam hits each optic of the path now, relative to its centre (radius = 1).</summary>
+        private void UpdatePathOptics()
+        {
+            m_OpticHits.Clear();
+            if (!m_FoldTrusted) return;
+            for (int o = 0; o < m_PathOptics.Count; o++)
+            {
+                PathOptic optic = m_PathOptics[o];
+                // The real beam piece that hits this optic: the strongest one ending within the optic's radius (+50 %)
+                Vector3 best = Vector3.zero;
+                bool found = false;
+                float bestPower = 0f;
+                for (int i = 0; i < m_Segments.Count; i++)
+                {
+                    LaserSegment s = m_Segments[i];
+                    if (s.HitCollider == null || s.Power <= bestPower) continue;
+                    Vector3 rel = s.End - optic.Centre;
+                    if (rel.magnitude > optic.Radius * 1.5f + 0.02f) continue;
+                    bestPower = s.Power;
+                    best = new Vector3(Vector3.Dot(rel, optic.Right), Vector3.Dot(rel, optic.Up), 1f) / optic.Radius;
+                    best.z = 1f;
+                    found = true;
+                }
+
+                m_OpticHits.Add(found ? best : Vector3.zero);
+            }
+        }
+
+        /// <summary>Gauges at the bottom of the shown picture (guide overlay): edge circle, beam dot, name.</summary>
+        private void PlaceOpticGauges(bool on)
+        {
+            int count = on && m_FoldTrusted ? Mathf.Min(m_PathOptics.Count, m_OpticHits.Count) : 0;
+            if (count > 0 && m_RingSprite == null)
+            {
+                m_RingSprite = MakeCircleSprite(true);
+                m_DiscSprite = MakeCircleSprite(false);
+            }
+
+            while (m_Gauges.Count < count)
+            {
+                m_Gauges.Add(CreateGauge());
+            }
+
+            for (int i = 0; i < m_Gauges.Count; i++)
+            {
+                RectTransform gauge = m_Gauges[i];
+                bool show = i < count;
+                if (gauge.gameObject.activeSelf != show) gauge.gameObject.SetActive(show);
+                if (!show) continue;
+
+                Vector3 hit = m_OpticHits[i];
+                float out01 = new Vector2(hit.x, hit.y).magnitude;
+                Color colour = hit.z < 0.5f || out01 > 1f ? opticOffColor : out01 > opticWarnFraction ? opticWarnColor : opticColor;
+                // Sized from the picture (the guide overlay has its own scale): about a fifth of the picture high
+                float size = m_GuideRoot.rect.height * gaugeFraction;
+                gauge.sizeDelta = new Vector2(size, size);
+                ((RectTransform)gauge.GetChild(0)).sizeDelta = new Vector2(size, size);
+                ((RectTransform)gauge.GetChild(1)).sizeDelta = new Vector2(size * 0.18f, size * 0.18f);
+                var labelRect = (RectTransform)gauge.GetChild(2);
+                labelRect.sizeDelta = new Vector2(size * 2.2f, size * 0.4f);
+                gauge.anchoredPosition = new Vector2(size * 0.7f + i * size * 2.4f, size * 0.45f);
+
+                var ring = gauge.GetChild(0).GetComponent<Image>();
+                var dot = (RectTransform)gauge.GetChild(1);
+                var label = gauge.GetChild(2).GetComponent<Text>();
+                ring.color = colour;
+                bool known = hit.z > 0.5f;
+                dot.gameObject.SetActive(known);
+                if (known)
+                {
+                    Vector2 p = Vector2.ClampMagnitude(new Vector2(hit.x, hit.y), 1.15f) * (size * 0.5f);
+                    dot.anchoredPosition = p;
+                    dot.GetComponent<Image>().color = colour;
+                }
+
+                string text = m_PathOptics[i].Name + (known ? "" : "\nMISSED");
+                if (label.text != text) label.text = text;
+                label.color = colour;
+            }
+        }
+
+        private RectTransform CreateGauge()
+        {
+            var root = new GameObject("Optic Gauge", typeof(RectTransform));
+            root.layer = m_GuideRoot.gameObject.layer;
+            var rect = (RectTransform)root.transform;
+            rect.SetParent(m_GuideRoot, false);
+            rect.anchorMin = rect.anchorMax = Vector2.zero;
+            rect.pivot = Vector2.zero;
+            rect.sizeDelta = new Vector2(100f, 100f);   // sized every frame in PlaceOpticGauges
+
+            var back = new GameObject("Edge", typeof(RectTransform), typeof(Image));
+            back.layer = root.layer;
+            back.transform.SetParent(rect, false);
+            var backRect = (RectTransform)back.transform;
+            backRect.anchorMin = backRect.anchorMax = new Vector2(0.5f, 0.5f);
+            backRect.sizeDelta = new Vector2(100f, 100f);
+            var ringImage = back.GetComponent<Image>();
+            ringImage.sprite = m_RingSprite;
+            ringImage.raycastTarget = false;
+
+            var dot = new GameObject("Beam", typeof(RectTransform), typeof(Image));
+            dot.layer = root.layer;
+            dot.transform.SetParent(rect, false);
+            var dotRect = (RectTransform)dot.transform;
+            dotRect.anchorMin = dotRect.anchorMax = new Vector2(0.5f, 0.5f);
+            dotRect.sizeDelta = new Vector2(18f, 18f);
+            var dotImage = dot.GetComponent<Image>();
+            dotImage.sprite = m_DiscSprite;
+            dotImage.raycastTarget = false;
+
+            Text label = GuideText("Name", m_GuideFont, 32, opticColor, true);
+            label.transform.SetParent(rect, false);
+            label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(0.5f, 0f);
+            label.rectTransform.pivot = new Vector2(0.5f, 1f);
+            label.rectTransform.anchoredPosition = new Vector2(0f, -4f);
+            label.rectTransform.sizeDelta = new Vector2(220f, 40f);
+            return rect;
+        }
+
+        private static Sprite MakeCircleSprite(bool ring)
+        {
+            const int size = 128;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = ring ? "Gauge Ring" : "Gauge Disc", wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[size * size];
+            float centre = (size - 1) * 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float d = Mathf.Sqrt((x - centre) * (x - centre) + (y - centre) * (y - centre)) / (size * 0.5f);
+                    float a = ring ? Mathf.Clamp01((1f - Mathf.Abs(d - 0.93f) / 0.05f)) : Mathf.Clamp01((1f - d) * 20f);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
         }
 
         private void SetOverlay(bool on)
@@ -1367,10 +1578,13 @@ namespace EinsteinTelescope.Laser
                 targetPoint = target.Surface.position;
                 landingPoint = last.End;
                 BuildFold(path, m_Fold);
+                BuildPathOptics(path, m_PathOptics);
                 m_CachedFoldMirror = m_GuideMirror;
                 m_CachedFoldTarget = target;
                 m_CachedFold.Clear();
                 m_CachedFold.AddRange(m_Fold);
+                m_CachedOptics.Clear();
+                m_CachedOptics.AddRange(m_PathOptics);
             }
             else
             {
@@ -1387,10 +1601,13 @@ namespace EinsteinTelescope.Laser
                 {
                     m_Fold.Clear();
                     m_Fold.AddRange(m_CachedFold);
+                    m_PathOptics.Clear();
+                    m_PathOptics.AddRange(m_CachedOptics);
                 }
                 else
                 {
                     BuildFold(path, m_Fold);
+                    m_PathOptics.Clear();   // guessed path: no optics shown
                 }
             }
 
@@ -1729,7 +1946,9 @@ namespace EinsteinTelescope.Laser
 
             float elevation = view.elevation * Mathf.Deg2Rad;
             Vector3 offset = (flat * Mathf.Cos(elevation) + Vector3.up * Mathf.Sin(elevation)) * view.distance;
-            Place(centre + offset, -offset);
+            // Stay inside the hall (a camera behind a wall or above the ceiling sees nothing useful)
+            Vector3 position = Vector3.Max(cameraLimitMin, Vector3.Min(cameraLimitMax, centre + offset));
+            Place(position, centre - position);
         }
 
         private void Place(Vector3 position, Vector3 direction)

@@ -53,6 +53,7 @@ namespace EinsteinTelescope.Laser
         public Transform Surface => surface != null ? surface : transform;
         public float Reflectance => reflectance;
         public float Transmittance => transmittance;
+        public float Radius => radius;
 
         /// <summary>Total power that arrived on the splitter last frame.</summary>
         public float ArrivedPower => m_LastArrivedPower;
