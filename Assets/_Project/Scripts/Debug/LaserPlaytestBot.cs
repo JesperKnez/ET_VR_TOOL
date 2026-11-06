@@ -747,7 +747,7 @@ public class LaserPlaytestBot : MonoBehaviour
             bool interesting = false;
             foreach (Material m in r.sharedMaterials)
             {
-                if (m && (m.name.Contains("Chrome") || m.name.Contains("Desk_Stands"))) interesting = true;
+                if (m && (m.name.Contains("Chrome") || m.name.Contains("Desk_Stands") || m.name.StartsWith("M_Tower"))) interesting = true;
             }
 
             if (!interesting) continue;

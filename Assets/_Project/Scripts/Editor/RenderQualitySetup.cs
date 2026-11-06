@@ -13,8 +13,8 @@ using UnityEngine.Rendering;
 ///     almost nothing to work with and highlights on metal and glass clipped flat.
 ///  2. Reflection probe box projection and blending on in the pipeline. RP_ControlRoom had box projection ticked,
 ///     but the pipeline switched the feature off, so it was ignored: reflections floated.
-///  3. Reflection probes at 512 px, plus two probes for the west and east half of the hall (the single RP_Hall in
-///     the middle made every tank and pipe reflect the centre of the hall). Capture points are kept out of the tanks.
+///  3. Reflection probes at 512 px. RP_Hall covers the whole hall from a capture point in the open (not between the
+///     tanks); half-hall probes made the one-mesh towers reflect the wrong half. RP_ControlRoom keeps priority.
 ///  4. Render scale 1.2: sharper text and thin lines. Not higher: over Air Link the stream's bitrate limits the
 ///     sharpness anyway, and the laptop GPU must keep 72/90 fps.
 /// Also guards against the "radioactive glow" from the bake: small emissive materials (screens, Lumi) are set to
@@ -31,10 +31,22 @@ public static class RenderQualitySetup
     static readonly HashSet<string> MainLightMaterials = new HashSet<string> { "Light_Emission", "Light_Panel" };
 
     // Hall: x -17.15..17.15, z -11..11, floor 0, ceiling 8. Control room in the corner x -17.15..-9.15, z -11..-3.
-    static readonly (string name, Vector3 capture, Vector3 boxCentre, Vector3 boxSize)[] HallProbes =
+    // One probe for the whole hall. TowerConstellation is a single 25 m mesh, so Unity picks one probe set for all
+    // tanks (by the mesh centre): with two half-hall probes it took the east one, and box projection then gave the
+    // west tanks a reflection of the wrong half (black tanks). The capture point must be in the open: RP_Hall used to
+    // sit between the tanks, so part of its cubemap saw dark tank walls (black chrome racks with box projection).
+    static readonly Vector3 HallBoxCentre = new Vector3(0f, 4f, 0f);
+    static readonly Vector3 HallBoxSize = new Vector3(34.6f, 8.2f, 22.2f);
+    static readonly Vector3[] HallCaptureCandidates =
     {
-        ("RP_Hall_West", new Vector3(-8f, 2.2f, 3.5f), new Vector3(-8.6f, 4f, 0f), new Vector3(17.4f, 8.2f, 22.2f)),
-        ("RP_Hall_East", new Vector3(8f, 2.2f, 3.5f), new Vector3(8.6f, 4f, 0f), new Vector3(17.4f, 8.2f, 22.2f)),
+        new Vector3(0f, 3f, 5f), new Vector3(0f, 3f, 8f), new Vector3(-2f, 3f, 6f), new Vector3(2f, 3f, 6f), new Vector3(0f, 4.5f, 5f)
+    };
+
+    // Tank centres (x, z) from CLAUDE.md, "Laser in de torens"
+    static readonly Vector2[] Tanks =
+    {
+        new Vector2(2.6f, -7.7f), new Vector2(0f, -5.1f), new Vector2(-4.525f, -0.575f), new Vector2(4.525f, -0.575f),
+        new Vector2(-11.172f, 6.072f), new Vector2(11.172f, 6.072f)
     };
 
     [MenuItem("Tools/Einstein Telescope/Lighting/PC quality: HDR, reflection probes, render scale")]
@@ -76,58 +88,80 @@ public static class RenderQualitySetup
     static string SetProbes()
     {
         GameObject hall = GameObject.Find("RP_Hall");
-        Transform parent = hall ? hall.transform.parent : null;
-        int added = 0;
-        foreach (var (name, capture, boxCentre, boxSize) in HallProbes)
-        {
-            GameObject go = GameObject.Find(name);
-            if (!go)
-            {
-                go = new GameObject(name);
-                Undo.RegisterCreatedObjectUndo(go, "Hall probes");
-                if (parent) go.transform.SetParent(parent, true);
-                added++;
-            }
+        if (!hall) return "RP_Hall not found.";
 
-            go.transform.position = capture;
-            var probe = go.GetComponent<ReflectionProbe>();
-            if (!probe) probe = Undo.AddComponent<ReflectionProbe>(go);
-            probe.mode = ReflectionProbeMode.Baked;
-            probe.importance = 1;
-            probe.boxProjection = true;
-            probe.size = boxSize;
-            probe.center = boxCentre - capture;   // box in world space, capture point elsewhere
-            probe.blendDistance = 1f;
-            probe.hdr = true;
-            GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ReflectionProbeStatic);
+        // The half-hall probes from the previous version are no longer needed
+        int removed = 0;
+        foreach (string name in new[] { "RP_Hall_West", "RP_Hall_East" })
+        {
+            GameObject old = GameObject.Find(name);
+            if (old) { Undo.DestroyObjectImmediate(old); removed++; }
         }
 
-        // RP_Hall becomes the fallback only (importance 0): its capture point sits between the towers, so part of its
-        // cubemap sees dark tank walls. With box projection those dark parts landed on props near the walls (the chrome
-        // wire racks turned black). The west/east probes now win everywhere in the hall.
-        // RP_ControlRoom keeps importance 2 and blend distance 0.1 (CLAUDE.md).
-        if (hall)
+        Vector3 capture = PickCapturePoint(out string why);
+        var probe = hall.GetComponent<ReflectionProbe>();
+        Undo.RecordObject(hall.transform, "Hall probe");
+        Undo.RecordObject(probe, "Hall probe");
+        hall.transform.position = capture;
+        probe.mode = ReflectionProbeMode.Baked;
+        probe.importance = 2;                       // wins in the hall
+        probe.boxProjection = true;
+        probe.size = HallBoxSize;
+        probe.center = HallBoxCentre - capture;     // box on the hall, capture point elsewhere
+        probe.blendDistance = 1f;
+        probe.hdr = true;
+
+        // The control room stays on its own probe (higher than the hall), blend distance 0.1 (CLAUDE.md)
+        GameObject room = GameObject.Find("RP_ControlRoom");
+        var roomProbe = room ? room.GetComponent<ReflectionProbe>() : null;
+        if (roomProbe && roomProbe.importance <= probe.importance)
         {
-            var hallProbe = hall.GetComponent<ReflectionProbe>();
-            if (hallProbe && hallProbe.importance != 0)
-            {
-                Undo.RecordObject(hallProbe, "Hall probe importance");
-                hallProbe.importance = 0;
-            }
+            Undo.RecordObject(roomProbe, "Control room probe");
+            roomProbe.importance = probe.importance + 1;
         }
 
         int sharpened = 0;
-        foreach (var probe in Object.FindObjectsByType<ReflectionProbe>(FindObjectsInactive.Include))
+        foreach (var p in Object.FindObjectsByType<ReflectionProbe>(FindObjectsInactive.Include))
         {
-            if (probe.resolution != PROBE_RESOLUTION)
+            if (p.resolution != PROBE_RESOLUTION)
             {
-                Undo.RecordObject(probe, "Probe resolution");
-                probe.resolution = PROBE_RESOLUTION;
+                Undo.RecordObject(p, "Probe resolution");
+                p.resolution = PROBE_RESOLUTION;
                 sharpened++;
             }
         }
 
-        return $"Reflection probes: {added} added (west/east hall), {sharpened} set to {PROBE_RESOLUTION} px.";
+        return $"Reflection probes: RP_Hall covers the whole hall, capture point {capture} ({why}), importance 2; " +
+               $"RP_ControlRoom importance {(roomProbe ? roomProbe.importance : -1)}; {removed} half-hall probes removed; {sharpened} set to {PROBE_RESOLUTION} px.";
+    }
+
+    /// <summary>The first candidate at least 3 m from every tank and outside every prop.</summary>
+    static Vector3 PickCapturePoint(out string why)
+    {
+        foreach (Vector3 c in HallCaptureCandidates)
+        {
+            bool clear = true;
+            foreach (Vector2 t in Tanks)
+            {
+                if (Vector2.Distance(new Vector2(c.x, c.z), t) < 3f) clear = false;
+            }
+
+            foreach (Renderer r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude))
+            {
+                Vector3 size = r.bounds.size;
+                if (size.x > 12f || size.z > 12f || r is LineRenderer || r is ParticleSystemRenderer) continue;   // hall, towers, crane
+                if (r.bounds.Contains(c)) { clear = false; break; }
+            }
+
+            if (clear)
+            {
+                why = "clear of tanks and props";
+                return c;
+            }
+        }
+
+        why = "no candidate was clear, using the first";
+        return HallCaptureCandidates[0];
     }
 
     /// <summary>
