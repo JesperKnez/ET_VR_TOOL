@@ -73,6 +73,8 @@ namespace EinsteinTelescope.Lumi
             if (web.result != UnityWebRequest.Result.Success)
             {
                 string apiMessage = TryReadError(text);
+                if (string.IsNullOrEmpty(apiMessage) && !string.IsNullOrWhiteSpace(text))
+                    apiMessage = text.Length <= 200 ? text.Trim() : text.Substring(0, 200).Trim() + "..."; // e.g. an HTML error page
                 throw new LumiLLMException($"{Name} request failed (HTTP {web.responseCode}): " +
                                            (string.IsNullOrEmpty(apiMessage) ? web.error : apiMessage));
             }

@@ -79,10 +79,12 @@ namespace EinsteinTelescope.Lumi
             laser = GetComponent<LumiLaserReactions>();
             voice = GetComponent<LumiVoice>();
             offline = new OfflineTutorClient(ScriptedAnswer);
-            online = config != null && config.CanGoOnline ? new DeepSeekClient(config) : null;
+            if (config == null || !config.CanGoOnline) online = null;
+            else if (config.UsesAnthropic) online = new AnthropicClient(config);
+            else online = new DeepSeekClient(config);
             history = new LumiConversationHistory(config != null ? config.HistoryTurns : 6);
             if (config == null) Debug.LogWarning("[Lumi] No AI config is linked on LumiTutor, so Lumi only gives scripted answers. Link one from Assets/_Project/Secrets.", this);
-            else if (online == null) Debug.LogWarning("[Lumi] The AI config has no DeepSeek API key, so Lumi only gives scripted answers.", this);
+            else if (online == null) Debug.LogWarning("[Lumi] The AI config has no API key for the chosen provider, so Lumi only gives scripted answers.", this);
         }
 
         private void Start()

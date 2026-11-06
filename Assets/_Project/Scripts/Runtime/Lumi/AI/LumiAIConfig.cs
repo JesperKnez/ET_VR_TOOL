@@ -7,6 +7,7 @@ namespace EinsteinTelescope.Lumi
     {
         DeepSeek,
         Ollama,
+        Anthropic, // appended last so existing config assets keep their chosen provider
     }
 
     /// <summary>
@@ -40,6 +41,16 @@ namespace EinsteinTelescope.Lumi
         [Tooltip("Give up and use the offline answer after this many seconds. Laptops can be slow, especially on the first question.")]
         [SerializeField, Range(3, 120)] private int ollamaTimeoutSeconds = 60;
 
+        [Header("Anthropic (Claude, native Messages API)")]
+        [Tooltip("Secret! An API key from console.anthropic.com (a Claude subscription does not work). Set a spending limit there.")]
+        [SerializeField] private string anthropicApiKey = "";
+        [Tooltip("The full Messages API URL, including /messages.")]
+        [SerializeField] private string anthropicEndpoint = "https://api.anthropic.com/v1/messages";
+        [Tooltip("Any Claude model id. A small, fast one suits short answers.")]
+        [SerializeField] private string anthropicModel = "claude-haiku-5-5";
+        [Tooltip("Give up and use the offline answer after this many seconds.")]
+        [SerializeField, Range(3, 60)] private int anthropicTimeoutSeconds = 15;
+
         [Header("Answers")]
         [Tooltip("Upper limit for one reply. Lumi should answer in 1–3 short sentences anyway.")]
         [SerializeField, Range(30, 400)] private int maxTokens = 150;
@@ -50,16 +61,43 @@ namespace EinsteinTelescope.Lumi
 
         public LumiAIProvider Provider => provider;
         public bool UsesOllama => provider == LumiAIProvider.Ollama;
-        public string ApiKey => apiKey;
-        public string Endpoint => UsesOllama ? ollamaEndpoint : endpoint;
-        public string Model => UsesOllama ? ollamaModel : model;
+        public bool UsesAnthropic => provider == LumiAIProvider.Anthropic;
+
+        /// <summary>The key of the chosen provider. Each provider's key only goes to that provider's endpoint.</summary>
+        public string ApiKey => provider switch
+        {
+            LumiAIProvider.Anthropic => anthropicApiKey,
+            LumiAIProvider.Ollama => string.Empty,
+            _ => apiKey,
+        };
+
+        public string Endpoint => provider switch
+        {
+            LumiAIProvider.Anthropic => anthropicEndpoint,
+            LumiAIProvider.Ollama => ollamaEndpoint,
+            _ => endpoint,
+        };
+
+        public string Model => provider switch
+        {
+            LumiAIProvider.Anthropic => anthropicModel,
+            LumiAIProvider.Ollama => ollamaModel,
+            _ => model,
+        };
+
+        public int TimeoutSeconds => provider switch
+        {
+            LumiAIProvider.Anthropic => anthropicTimeoutSeconds,
+            LumiAIProvider.Ollama => ollamaTimeoutSeconds,
+            _ => timeoutSeconds,
+        };
+
         public int MaxTokens => maxTokens;
         public float Temperature => temperature;
-        public int TimeoutSeconds => UsesOllama ? ollamaTimeoutSeconds : timeoutSeconds;
         public int HistoryTurns => historyTurns;
-        public bool HasKey => !string.IsNullOrWhiteSpace(apiKey);
+        public bool HasKey => !string.IsNullOrWhiteSpace(ApiKey);
 
-        /// <summary>The key only ever goes to DeepSeek's endpoint setting, never to Ollama.</summary>
+        /// <summary>DeepSeek gets its key as a Bearer token; Ollama never gets one (Anthropic has its own client and header).</summary>
         public bool SendsApiKey => !UsesOllama && HasKey;
 
         /// <summary>True for a server on this computer (e.g. Ollama), which needs no API key.</summary>
