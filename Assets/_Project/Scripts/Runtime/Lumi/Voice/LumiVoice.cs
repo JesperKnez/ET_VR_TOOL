@@ -46,7 +46,8 @@ namespace EinsteinTelescope.Lumi
         private void Awake()
         {
             tts = CreateTextToSpeech();
-            if (config != null && tts == null) Debug.LogWarning($"[Lumi] No {config.Provider} key in the voice config, so Lumi stays silent.", this);
+            if (config == null) Debug.LogWarning("[Lumi] No voice config is linked on LumiVoice, so Lumi stays silent. Link one from Assets/_Project/Secrets.", this);
+            else if (tts == null) Debug.LogWarning($"[Lumi] No {config.Provider} key in the voice config, so Lumi stays silent.", this);
 
             // The voice comes from the head (it follows nods and turns); falls back to Lumi itself.
             Transform head = null;

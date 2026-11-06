@@ -70,7 +70,7 @@ namespace EinsteinTelescope.Lumi
         public string SpeechStatus => speech.IsReady ? "ready" : speech.IsLoading ? "loading" : "no model";
 
         /// <summary>True if a press of the talk button would start recording now.</summary>
-        public bool CanListen => speech.IsReady && !IsListening && !IsTranscribing && !tutor.IsBusy;
+        public bool CanListen => speech.IsReady && !IsListening && !IsTranscribing && (!tutor.IsBusy || tutor.IsExplaining);
 
         private void Awake()
         {
@@ -116,6 +116,7 @@ namespace EinsteinTelescope.Lumi
                 return;
             }
 
+            tutor.StopExplaining(); // a question goes before a level explanation, and the mic shouldn't hear Lumi
             recording = Microphone.Start(null, false, maxSeconds, WhisperFrequency);
             if (recording == null)
             {

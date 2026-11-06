@@ -8,8 +8,8 @@ using UnityEngine.Networking;
 namespace EinsteinTelescope.Lumi
 {
     /// <summary>
-    /// Talks to DeepSeek's Chat Completions API (OpenAI-compatible):
-    /// POST {endpoint} with "Authorization: Bearer {key}" and { model, messages, max_tokens, temperature }.
+    /// Talks to an OpenAI-compatible Chat Completions API (DeepSeek, or Ollama: see LumiAIConfig):
+    /// POST {endpoint} with { model, messages, max_tokens, temperature }, plus "Authorization: Bearer {key}" for DeepSeek.
     /// Non-blocking: waits frame by frame, so VR never stutters while Lumi thinks. Never logs the key.
     /// </summary>
     public sealed class DeepSeekClient : ILumiLLMClient
@@ -36,7 +36,7 @@ namespace EinsteinTelescope.Lumi
             this.config = config;
         }
 
-        public string Name => "DeepSeek";
+        public string Name => config != null ? config.Provider.ToString() : "AI";
 
         public async Awaitable<string> CompleteAsync(IReadOnlyList<LumiChatMessage> messages, CancellationToken cancellation)
         {
@@ -60,7 +60,7 @@ namespace EinsteinTelescope.Lumi
                 timeout = config.TimeoutSeconds,
             };
             web.SetRequestHeader("Content-Type", "application/json");
-            if (config.HasKey) web.SetRequestHeader("Authorization", "Bearer " + config.ApiKey.Trim());
+            if (config.SendsApiKey) web.SetRequestHeader("Authorization", "Bearer " + config.ApiKey.Trim());
 
             UnityWebRequestAsyncOperation operation = web.SendWebRequest();
             while (!operation.isDone)
@@ -73,7 +73,7 @@ namespace EinsteinTelescope.Lumi
             if (web.result != UnityWebRequest.Result.Success)
             {
                 string apiMessage = TryReadError(text);
-                throw new LumiLLMException($"DeepSeek request failed (HTTP {web.responseCode}): " +
+                throw new LumiLLMException($"{Name} request failed (HTTP {web.responseCode}): " +
                                            (string.IsNullOrEmpty(apiMessage) ? web.error : apiMessage));
             }
 
@@ -84,7 +84,7 @@ namespace EinsteinTelescope.Lumi
             }
             catch (ArgumentException)
             {
-                throw new LumiLLMException("DeepSeek sent a reply that isn't valid JSON.");
+                throw new LumiLLMException($"{Name} sent a reply that isn't valid JSON.");
             }
 
             string content = response?.choices != null && response.choices.Length > 0
@@ -92,7 +92,7 @@ namespace EinsteinTelescope.Lumi
                 : null;
             if (string.IsNullOrWhiteSpace(content))
             {
-                throw new LumiLLMException("DeepSeek sent an empty reply." +
+                throw new LumiLLMException($"{Name} sent an empty reply." +
                                            (response?.error != null ? " " + response.error.message : string.Empty));
             }
             return content.Trim();
