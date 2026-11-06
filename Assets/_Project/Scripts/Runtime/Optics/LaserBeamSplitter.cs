@@ -60,6 +60,26 @@ namespace EinsteinTelescope.Laser
         /// <summary>How many beams hit the splitter last frame (2 or more = beams are being recombined).</summary>
         public int BeamCount => m_LastBeamCount;
 
+        /// <summary>
+        /// Where the reflected and the transmitted beam start, and which way they go, for a beam that hits this splitter
+        /// at <paramref name="point"/> going <paramref name="direction"/>. Same maths as <see cref="OnLaserHit"/>, for
+        /// tools that follow one beam through the optics (the mirror camera): the thick substrate shifts both beams by
+        /// millimetres, so "starts where the beam hit" is not enough to tell them from the other arm's beams.
+        /// </summary>
+        public void PredictOutgoing(Vector3 point, Vector3 direction, out Vector3 reflectedOrigin, out Vector3 reflectedDirection, out Vector3 transmittedOrigin)
+        {
+            Vector3 normal = Surface.forward;
+            Vector3 normalTowardsBeam = Vector3.Dot(direction, normal) < 0f ? normal : -normal;
+            bool fromBack = Vector3.Dot(direction, normal) > 0f;
+            reflectedOrigin = fromBack && simulateSubstrateOffset
+                ? LaserOptics.InternalReflectionExitPoint(point, direction, -normal, substrateThickness, refractiveIndex)
+                : point;
+            reflectedDirection = LaserOptics.Reflect(direction, normal);
+            transmittedOrigin = simulateSubstrateOffset
+                ? LaserOptics.PlateExitPoint(point, direction, normalTowardsBeam, substrateThickness, refractiveIndex)
+                : point;
+        }
+
         public void OnLaserHit(in LaserHit hit, LaserBeamQueue beams)
         {
             Transform plate = Surface;

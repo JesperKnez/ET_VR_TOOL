@@ -1580,31 +1580,35 @@ namespace EinsteinTelescope.Laser
 
         private static Vector3 SegmentDirection(LaserSegment s) => (s.End - s.Start).normalized;
 
-        /// <summary>A target counts when the beam hits it from a side it measures (see LaserTarget.frontFaceOnly).</summary>
         /// <summary>
-        /// True when <paramref name="next"/> is light that <paramref name="piece"/> produces at the optic it ends on: a
-        /// reflection starts exactly where it hit, light that goes through (iris, glass plate) keeps its direction and
-        /// starts on its line, shifted at most a few millimetres by the glass.
+        /// True when <paramref name="next"/> is light that <paramref name="piece"/> produces at the optic it ends on.
+        /// Mirrors and irises send their light on from the hit point itself. The beam splitter is a thick glass plate:
+        /// its reflected and transmitted beams start millimetres away, so its own prediction is used (exact, so the
+        /// other arm's beams, which leave the same splitter close by, are never mistaken for this one).
         /// </summary>
         private static bool Continues(LaserSegment piece, LaserSegment next)
         {
-            Vector3 gap = next.Start - piece.End;
-            if (gap.sqrMagnitude < 1e-6f)
-            {
-                return true;   // within 1 mm: starts at the hit point
-            }
-
+            const float sameSpot = 1e-6f;   // 1 mm, squared
             Vector3 inDirection = SegmentDirection(piece);
-            if (Vector3.Angle(inDirection, SegmentDirection(next)) > 1f || gap.magnitude > 0.05f)
+            Vector3 outDirection = SegmentDirection(next);
+            LaserBeamSplitter splitter = piece.HitCollider != null ? piece.HitCollider.GetComponentInParent<LaserBeamSplitter>() : null;
+            if (splitter != null)
             {
-                return false;
+                splitter.PredictOutgoing(piece.End, inDirection, out Vector3 reflectedOrigin, out Vector3 reflectedDirection, out Vector3 transmittedOrigin);
+                bool reflected = (next.Start - reflectedOrigin).sqrMagnitude < sameSpot && Vector3.Angle(outDirection, reflectedDirection) < 0.5f;
+                bool transmitted = (next.Start - transmittedOrigin).sqrMagnitude < sameSpot && Vector3.Angle(outDirection, inDirection) < 0.5f;
+                return reflected || transmitted;
             }
 
-            return Vector3.ProjectOnPlane(gap, inDirection).magnitude < 0.005f;
+            return (next.Start - piece.End).sqrMagnitude < sameSpot;
         }
 
+        /// <summary>
+        /// A target counts only when the beam hits its front face. Beams coming back from the end mirrors pass the irises
+        /// from behind on their way to the laser; those irises are not the goal of an end mirror (the detector is).
+        /// </summary>
         private static bool Counts(LaserTarget target, LaserSegment segment) =>
-            !target.FrontFaceOnly || Vector3.Dot(SegmentDirection(segment), target.Surface.forward) < 0f;
+            Vector3.Dot(SegmentDirection(segment), target.Surface.forward) < 0f;
 
         /// <summary>
         /// Depth-first: the beam pieces that start where this one ends, until one ends on a <see cref="LaserTarget"/>.

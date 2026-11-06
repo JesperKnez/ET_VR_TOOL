@@ -115,7 +115,7 @@ public class LaserPlaytestBot : MonoBehaviour
         Time.timeScale = TIME_SCALE;
         foreach (int level in levels)
         {
-            yield return PlayLevel(level, directionTest, play, command.Contains("nominal"));
+            yield return PlayLevel(level, directionTest, play, System.Array.IndexOf(command.Split(' '), "nominal") >= 0, command.Contains("dirnominal"));
         }
 
         Time.timeScale = 1f;
@@ -185,6 +185,42 @@ public class LaserPlaytestBot : MonoBehaviour
     }
 
     /// <summary>All mirrors on their designed angle: the level must then complete. Lists the beam pieces either way.</summary>
+    /// <summary>
+    /// Direction test with every beam on target (all mirrors at their designed angle), so every dartboard shows a spot:
+    /// per mirror, in the Close-up view, one press of each arrow (undone again). Shows whether the arrows move the spot
+    /// the way they point, in the close-up and on each dartboard.
+    /// </summary>
+    IEnumerator DirectionAtNominal(string level)
+    {
+        report.AppendLine("### Direction test at the designed angles (every dartboard lit)");
+        int closeUp = FindView(LaserMirrorCamera.ViewMode.AlongBeam);
+        if (closeUp >= 0) mirrorCamera.SelectView(closeUp);
+        for (int m = 0; m < panel.MirrorCount; m++)
+        {
+            foreach (MirrorMount mirror in manager.CurrentLevel.Mirrors)
+            {
+                if (mirror) { mirror.ResetToNominal(); mirror.InputLocked = false; }   // a completed level locks the mirrors
+            }
+
+            objective.StopObjective();   // on the designed angles the level would complete and lock the mirrors
+            objective.enabled = false;   // ... and the first press would start it again
+            panel.SelectMirror(m);
+            if (panel.SelectedMirror.IsFineMode) panel.ToggleFineMode();   // coarse steps: big enough to measure
+            yield return Settle();
+            report.AppendLine("**" + panel.SelectedMirror.DisplayName + "** " + Describe(TakeProbe()) +
+                              " | picture flipped x " + mirrorCamera.PictureFlippedX + ", y " + mirrorCamera.PictureFlippedY);
+            foreach (Vector2Int arrow in Arrows)
+            {
+                yield return DirectionTest(arrow);
+            }
+        }
+
+        objective.enabled = true;
+        manager.LoadLevel(manager.CurrentLevelIndex);   // back to the start angles
+        yield return new WaitForSecondsRealtime(1.5f);
+        if (manager.IsBriefingOpen) manager.ToggleBriefing();
+    }
+
     IEnumerator NominalCheck(string level)
     {
         report.AppendLine("### Designed angles (all mirrors 0, 0)");
@@ -223,7 +259,7 @@ public class LaserPlaytestBot : MonoBehaviour
 
     static string V(Vector3 v) => "(" + v.x.ToString("0.00") + ", " + v.y.ToString("0.00") + ", " + v.z.ToString("0.00") + ")";
 
-    IEnumerator PlayLevel(int index, bool directionTest, bool play, bool nominal)
+    IEnumerator PlayLevel(int index, bool directionTest, bool play, bool nominal, bool dirNominal = false)
     {
         manager.LoadLevel(index);
         yield return new WaitForSecondsRealtime(1.5f);
@@ -237,6 +273,7 @@ public class LaserPlaytestBot : MonoBehaviour
         yield return Shot(level + "_start");
 
         if (nominal) yield return NominalCheck(level);
+        if (dirNominal) yield return DirectionAtNominal(level);
         int closeUp = FindView(LaserMirrorCamera.ViewMode.AlongBeam);
         int wholePath = FindView(LaserMirrorCamera.ViewMode.BeamPath);
 
@@ -705,7 +742,7 @@ public class LaserPlaytestBot : MonoBehaviour
         public bool grade;      // exposure down, contrast up
         public bool ao;         // screen-space ambient occlusion
         public bool greyHall;   // hall walls, ceiling and floor at ~78 % instead of white
-        public bool noHdr, noGlass, noNewProbes;   // diagnostics: camera without HDR, control room glass hidden, west/east hall probes off
+        public bool noHdr, noGlass, noNewProbes, noRoomProbe;   // diagnostics: camera without HDR, control room glass hidden, west/east hall probes off, RP_ControlRoom off
     }
 
     static readonly LookVariant[] Looks =
@@ -714,6 +751,7 @@ public class LaserPlaytestBot : MonoBehaviour
         new LookVariant { name = "F_noHDR", noHdr = true },
         new LookVariant { name = "G_noGlass", noGlass = true },
         new LookVariant { name = "H_noNewProbes", noNewProbes = true },
+        new LookVariant { name = "I_noControlRoomProbe", noRoomProbe = true },
     };
 
     const float GreyHallFactor = 0.9f;
@@ -830,6 +868,19 @@ public class LaserPlaytestBot : MonoBehaviour
             if (glass) foreach (Renderer r in glass.GetComponentsInChildren<Renderer>()) if (r.enabled) { r.enabled = false; hiddenGlass.Add(r); }
             report.AppendLine("- glass renderers hidden: " + hiddenGlass.Count);
             undo.Add(() => { foreach (Renderer r in hiddenGlass) if (r) r.enabled = true; });
+        }
+
+        if (look.noRoomProbe)
+        {
+            GameObject roomProbeObject = GameObject.Find("RP_ControlRoom");
+            var roomProbe = roomProbeObject ? roomProbeObject.GetComponent<ReflectionProbe>() : null;
+            if (roomProbe)
+            {
+                roomProbe.enabled = false;
+                undo.Add(() => { if (roomProbe) roomProbe.enabled = true; });
+            }
+
+            report.AppendLine("- RP_ControlRoom off: " + (roomProbe != null));
         }
 
         if (look.noNewProbes)
