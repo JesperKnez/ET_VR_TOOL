@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading;
 using EinsteinTelescope.Laser;
 using UnityEngine;
 using UnityEngine.Events;
@@ -11,7 +12,7 @@ namespace EinsteinTelescope.Lumi
     /// Lumi's brain: a question goes in, a tutor-style answer comes out.
     ///
     /// 1. Lumi switches to the Think pose.
-    /// 2. The question goes to DeepSeek together with Lumi's personality, the live laser status and the
+    /// 2. The question goes to the AI (DeepSeek or Ollama) together with Lumi's personality, the live laser status and the
     ///    last few exchanges (see LumiPromptBuilder). Without a key, or if the request fails, a scripted
     ///    answer built from the level's own texts is used instead, so Lumi always answers.
     /// 3. An action tag at the end of the answer ([CELEBRATE], [WAVE], [FOCUS], [POINT:mirror]) is removed.
@@ -50,6 +51,7 @@ namespace EinsteinTelescope.Lumi
         private ILumiLLMClient online, offline;
         private LumiConversationHistory history;
         private int offlineIndex;
+        private CancellationTokenSource explainRun;
 
         public UnityEvent<string> OnQuestion => onQuestion;
         public UnityEvent<string> OnReply => onReply;
@@ -57,7 +59,10 @@ namespace EinsteinTelescope.Lumi
         /// <summary>True while Lumi is thinking about or answering a question.</summary>
         public bool IsBusy { get; private set; }
 
-        /// <summary>"DeepSeek" or "Offline": who will answer the next question.</summary>
+        /// <summary>True while Lumi says a scripted line, which <see cref="StopExplaining"/> can interrupt.</summary>
+        public bool IsExplaining => explainRun != null;
+
+        /// <summary>"DeepSeek", "Ollama" or "Offline": who will answer the next question.</summary>
         public string BrainName => (online ?? offline).Name;
 
         /// <summary>The last question and answer.</summary>
@@ -76,6 +81,8 @@ namespace EinsteinTelescope.Lumi
             offline = new OfflineTutorClient(ScriptedAnswer);
             online = config != null && config.CanGoOnline ? new DeepSeekClient(config) : null;
             history = new LumiConversationHistory(config != null ? config.HistoryTurns : 6);
+            if (config == null) Debug.LogWarning("[Lumi] No AI config is linked on LumiTutor, so Lumi only gives scripted answers. Link one from Assets/_Project/Secrets.", this);
+            else if (online == null) Debug.LogWarning("[Lumi] The AI config has no DeepSeek API key, so Lumi only gives scripted answers.", this);
         }
 
         /// <summary>Ask Lumi something. Ignored while Lumi is still answering the previous question.</summary>
@@ -87,6 +94,73 @@ namespace EinsteinTelescope.Lumi
 
         /// <summary>Forget the conversation (e.g. when a new level starts).</summary>
         public void ForgetConversation() => history.Clear();
+
+        /// <summary>
+        /// Lumi says a scripted line, without the AI: same voice, subtitles and Talk pose as an answer.
+        /// Ignored while Lumi is busy with something else.
+        /// </summary>
+        public void Explain(string line)
+        {
+            if (IsBusy || string.IsNullOrWhiteSpace(line)) return;
+            _ = ExplainAsync(line.Trim());
+        }
+
+        /// <summary>Stops a scripted line right away. Lumi is free again as soon as this returns.</summary>
+        public void StopExplaining()
+        {
+            if (explainRun == null) return;
+            CancellationTokenSource run = explainRun;
+            explainRun = null;
+            IsBusy = false;
+            run.Cancel();
+            if (voice != null) voice.Stop();
+            if (CurrentMode() == LumiMode.Talk) SetMode(LumiMode.Idle);
+        }
+
+        private async Awaitable ExplainAsync(string line)
+        {
+            IsBusy = true;
+            CancellationTokenSource run = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+            explainRun = run;
+
+            try
+            {
+                AudioClip speech = voice != null ? await voice.PrepareAsync(line, run.Token) : null;
+                if (run.IsCancellationRequested)
+                {
+                    if (speech != null) Destroy(speech);
+                    return;
+                }
+
+                LastReply = line;
+                history.AddSpoken(line);
+                onReply.Invoke(line);
+                SetMode(LumiMode.Talk);
+                if (speech != null) voice.Play(speech);
+                float talkSeconds = speech != null ? speech.length : Mathf.Max(CountWords(line) / wordsPerSecond, 1.5f);
+                await Awaitable.WaitForSecondsAsync(talkSeconds, run.Token);
+                if (CurrentMode() == LumiMode.Talk) SetMode(LumiMode.Idle);
+            }
+            catch (OperationCanceledException)
+            {
+                // Interrupted (StopExplaining already freed Lumi), or the scene closed.
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e, this);
+                if (this != null) SetMode(LumiMode.Idle);
+            }
+            finally
+            {
+                if (explainRun == run)
+                {
+                    explainRun = null;
+                    IsBusy = false;
+                }
+                // Not while run.Cancel() may still be running this code.
+                if (!run.IsCancellationRequested) run.Dispose();
+            }
+        }
 
         private async Awaitable AskAsync(string question)
         {
@@ -103,6 +177,7 @@ namespace EinsteinTelescope.Lumi
                 messages.Add(LumiChatMessage.User(question));
 
                 string reply;
+                bool fromModel = online != null;
                 try
                 {
                     reply = online != null
@@ -114,10 +189,11 @@ namespace EinsteinTelescope.Lumi
                     LastProblem = e.Message;
                     Debug.LogWarning("[Lumi] " + e.Message + " Using the offline answer.", this);
                     reply = ScriptedAnswer(question);
+                    fromModel = false;
                 }
 
                 string text = ExtractAction(reply, out string action, out string mirrorName);
-                history.Add(question, text);
+                if (fromModel) history.Add(question, text); // scripted answers ignore the conversation, so they'd only muddle it
                 LastReply = text;
 
                 // Prepare the speech while Lumi still looks thoughtful, so voice and Talk pose start together.
@@ -219,7 +295,7 @@ namespace EinsteinTelescope.Lumi
         // ------------------------------------------------------------------ offline answers
         /// <summary>
         /// A scripted, tutor-style answer built from the level's own texts. Used without an API key,
-        /// and whenever DeepSeek can't answer (no network at school, timeout...).
+        /// and whenever the AI can't answer (no network at school, timeout...).
         /// </summary>
         private string ScriptedAnswer(string question)
         {
@@ -228,11 +304,16 @@ namespace EinsteinTelescope.Lumi
 
             if (laser != null && !string.IsNullOrEmpty(laser.LastWarning) && Time.time - laser.LastWarningTime < 30f)
             {
-                return "Ooh, interesting! " + laser.LastWarning.Trim() + " What could you change so the light goes where you want?";
+                return LumiReactionLines.ForWarning(laser.LastWarning) + " What could you change so the light goes where you want?";
             }
             if (level == null)
             {
                 return "Light loves to travel in straight lines until something bounces it away. Want to start a level and take a closer look? [WAVE]";
+            }
+            if (ContainsAny(q, "help", "stuck", "what do i do", "how do i", "what now", "hint", "not working", "isn't working", "doesn't work", "wrong"))
+            {
+                string nextStep = laser != null ? laser.DescribeNextStep() : string.Empty;
+                if (!string.IsNullOrEmpty(nextStep)) return nextStep;
             }
             if (ContainsAny(q, "why", "how does", "what is", "what's", "physics", "explain", "warum", "wieso", "was ist"))
             {

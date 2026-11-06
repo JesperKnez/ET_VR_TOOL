@@ -3,7 +3,22 @@ guid: 2a0db44faadbf7547a2972c17354b9fb
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: LED_Panel
+    second: {fileID: 2100000, guid: d3c8f3b500baecd4a9c99cd180bff238, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_LightGrey
+    second: {fileID: 2100000, guid: e7bd80af51f9ed649bda7ac33ba17fd4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_White
+    second: {fileID: 2100000, guid: b5a37322b4583c64abb2f35feb91749b, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

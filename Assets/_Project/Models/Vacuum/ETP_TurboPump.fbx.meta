@@ -3,7 +3,42 @@ guid: 783c70e5247d6784e90949c221d013f7
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: LED_Green
+    second: {fileID: 2100000, guid: 6d934ee515a513540961dcdbb1c72966, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Label_White
+    second: {fileID: 2100000, guid: 0d9f414c5d5efd64aa5db546572fc40b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_PumpRed
+    second: {fileID: 2100000, guid: fdfaaf95eb6adb34ba7de87b0e6d8abe, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_DarkGrey
+    second: {fileID: 2100000, guid: d404c2add3c6ee94a99c24407645c282, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Brushed
+    second: {fileID: 2100000, guid: 16a602a96c9faa047b272c3fdcc0697e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Stainless
+    second: {fileID: 2100000, guid: d610b0c74bba8d047b7fff4a1cd0d06a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

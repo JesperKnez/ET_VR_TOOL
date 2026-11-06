@@ -81,6 +81,13 @@ public class LaserPlaytestBot : MonoBehaviour
         report.AppendLine();
 
         yield return new WaitForSecondsRealtime(2f);   // let the scene start (lasers, levels, monitor)
+        if (command.Contains("looks"))
+        {
+            yield return LookTour();
+            Finish(autorun);
+            yield break;
+        }
+
         if (command.Contains("tour"))
         {
             yield return Tour();
@@ -573,6 +580,14 @@ public class LaserPlaytestBot : MonoBehaviour
         foreach (Transform target in targets)
         {
             if (!TryBounds(target, out Bounds bounds)) continue;
+            var used = new HashSet<string>();
+            foreach (Renderer r in target.GetComponentsInChildren<Renderer>())
+            {
+                var filter = r.GetComponent<MeshFilter>();
+                foreach (Material m in r.sharedMaterials) used.Add((filter && filter.sharedMesh ? filter.sharedMesh.name : r.GetType().Name) + ": " + (m ? m.name : "none"));
+            }
+
+            report.AppendLine("- " + target.name + " uses " + string.Join(", ", used));
             for (int side = 0; side < 2; side++)
             {
                 float yaw = side == 0 ? 35f : 215f;
@@ -609,6 +624,249 @@ public class LaserPlaytestBot : MonoBehaviour
         Vector3 min = controlRoom ? new Vector3(-16.9f, 2.4f, -10.8f) : new Vector3(-16.8f, 0.3f, -10.7f);
         Vector3 max = controlRoom ? new Vector3(-9.4f, 4.8f, -3.2f) : new Vector3(16.8f, 7.6f, 10.7f);
         return Vector3.Max(min, Vector3.Min(max, position));
+    }
+
+    // ----- Look variants: the same views with different exposure / AO / wall brightness ------------------------
+    // Everything here is temporary (Play Mode only): an extra global Volume, an SSAO renderer feature that is removed
+    // again, and MaterialPropertyBlocks on the hall surfaces. No asset is changed.
+
+    struct LookVariant
+    {
+        public string name;
+        public bool grade;      // exposure down, contrast up
+        public bool ao;         // screen-space ambient occlusion
+        public bool greyHall;   // hall walls, ceiling and floor at ~78 % instead of white
+        public bool noHdr, noGlass, noNewProbes;   // diagnostics: camera without HDR, control room glass hidden, west/east hall probes off
+    }
+
+    static readonly LookVariant[] Looks =
+    {
+        new LookVariant { name = "A_now" },
+        new LookVariant { name = "F_noHDR", noHdr = true },
+        new LookVariant { name = "G_noGlass", noGlass = true },
+        new LookVariant { name = "H_noNewProbes", noNewProbes = true },
+    };
+
+    const float GreyHallFactor = 0.9f;
+    Camera lookCamera;
+
+    static readonly LookVariant[] OldLooks =
+    {
+        new LookVariant { name = "B_exposure", grade = true },
+        new LookVariant { name = "C_exposure_AO", grade = true, ao = true },
+        new LookVariant { name = "D_exposure_AO_greyhall", grade = true, ao = true, greyHall = true },
+    };
+
+    static readonly string[] HallSurfaces = { "Hall_Wall", "Ceiling", "Hall_Floor" };
+
+    IEnumerator LookTour()
+    {
+        report.AppendLine("## Look variants");
+        // Which reflection probes exist, and which ones the chrome racks and the desk frame really use
+        foreach (var rp in FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None))
+        {
+            report.AppendLine("- probe " + rp.name + ": enabled " + rp.enabled + ", importance " + rp.importance +
+                              ", bounds " + rp.bounds.min.ToString("F1") + " .. " + rp.bounds.max.ToString("F1") +
+                              ", box projection " + rp.boxProjection + ", blend " + rp.blendDistance +
+                              ", baked texture " + (rp.bakedTexture ? rp.bakedTexture.name : "NONE"));
+        }
+
+        var probeHits = new List<UnityEngine.Rendering.ReflectionProbeBlendInfo>();
+        foreach (Renderer r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        {
+            if (r is LineRenderer) continue;
+            bool interesting = false;
+            foreach (Material m in r.sharedMaterials)
+            {
+                if (m && (m.name.Contains("Chrome") || m.name.Contains("Desk_Stands"))) interesting = true;
+            }
+
+            if (!interesting) continue;
+            r.GetClosestReflectionProbes(probeHits);
+            var names = new List<string>();
+            foreach (var hit in probeHits) names.Add(hit.probe.name + " " + hit.weight.ToString("0.00"));
+            report.AppendLine("- " + r.name + " at " + r.bounds.center.ToString("F1") + " size " + r.bounds.size.ToString("F1") +
+                              " uses: " + (names.Count > 0 ? string.Join(", ", names) : "no probe (sky)"));
+        }
+        Camera main = Camera.main;
+        var go = new GameObject("Look Camera");
+        var cam = go.AddComponent<Camera>();
+        lookCamera = cam;
+        if (main) cam.CopyFrom(main);
+        cam.stereoTargetEye = StereoTargetEyeMask.None;
+        cam.fieldOfView = 60f;
+        cam.nearClipPlane = 0.05f;
+        cam.farClipPlane = 200f;
+        var rt = new RenderTexture(1600, 900, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
+        cam.targetTexture = rt;
+        var data = go.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+        data.renderPostProcessing = true;
+        data.antialiasing = UnityEngine.Rendering.Universal.AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+
+        // Camera poses: player view, view into the hall, and the props from one side
+        var poses = new List<(string name, Vector3 pos, Quaternion rot)>();
+        if (main)
+        {
+            poses.Add(("player_view", main.transform.position, main.transform.rotation));
+            poses.Add(("player_to_hall", main.transform.position, Quaternion.LookRotation(new Vector3(1f, -0.15f, 0.6f))));
+        }
+
+        foreach (string name in new[] { "Desk", "ETP_ControlCabinets_Floor", "ETP_MastLift" })
+        {
+            GameObject found = GameObject.Find(name);
+            if (!found || !TryBounds(found.transform, out Bounds b)) continue;
+            Vector3 dir = Quaternion.Euler(22f, 35f, 0f) * Vector3.back;
+            Vector3 p = ClampToRoom(b.center + dir * Mathf.Clamp(b.extents.magnitude * 1.9f, 1.2f, 25f), b.center);
+            poses.Add((name, p, Quaternion.LookRotation(b.center - p)));
+        }
+
+        GameObject storage = GameObject.Find("Storage - Spare Parts");
+        if (storage && TryBounds(storage.transform, out Bounds sb))
+        {
+            Vector3 dir = Quaternion.Euler(22f, 35f, 0f) * Vector3.back;
+            Vector3 p = ClampToRoom(sb.center + dir * Mathf.Clamp(sb.extents.magnitude * 1.9f, 1.2f, 25f), sb.center);
+            poses.Add(("storage", p, Quaternion.LookRotation(sb.center - p)));
+        }
+
+        yield return new WaitForSecondsRealtime(5f);   // let TowerTransparency finish its fade, so every variant shows the same towers
+        foreach (LookVariant look in Looks)
+        {
+            var undo = ApplyLook(look);
+            yield return new WaitForSecondsRealtime(0.5f);
+            foreach (var pose in poses)
+            {
+                cam.transform.SetPositionAndRotation(pose.pos, pose.rot);
+                yield return TourShot(cam, rt, "look_" + pose.name + "_" + look.name);
+            }
+
+            undo();
+            yield return null;
+        }
+
+        Destroy(go);
+        rt.Release();
+    }
+
+    /// <summary>Applies a look variant; returns the action that undoes it.</summary>
+    System.Action ApplyLook(LookVariant look)
+    {
+        var undo = new List<System.Action>();
+
+        if (look.noHdr && lookCamera) { lookCamera.allowHDR = false; undo.Add(() => { if (lookCamera) lookCamera.allowHDR = true; }); }
+
+        if (look.noGlass)
+        {
+            GameObject glass = GameObject.Find("ControlRoom_Glass");
+            var hiddenGlass = new List<Renderer>();
+            if (glass) foreach (Renderer r in glass.GetComponentsInChildren<Renderer>()) if (r.enabled) { r.enabled = false; hiddenGlass.Add(r); }
+            report.AppendLine("- glass renderers hidden: " + hiddenGlass.Count);
+            undo.Add(() => { foreach (Renderer r in hiddenGlass) if (r) r.enabled = true; });
+        }
+
+        if (look.noNewProbes)
+        {
+            var off = new List<ReflectionProbe>();
+            foreach (string n in new[] { "RP_Hall_West", "RP_Hall_East" })
+            {
+                GameObject p = GameObject.Find(n);
+                var probe = p ? p.GetComponent<ReflectionProbe>() : null;
+                if (probe && probe.enabled) { probe.enabled = false; off.Add(probe); }
+            }
+
+            report.AppendLine("- new hall probes off: " + off.Count);
+            undo.Add(() => { foreach (var p in off) if (p) p.enabled = true; });
+        }
+
+        if (look.grade)
+        {
+            var volumeObject = new GameObject("Look Variant Volume");
+            var volume = volumeObject.AddComponent<UnityEngine.Rendering.Volume>();
+            volume.isGlobal = true;
+            volume.priority = 100f;
+            var profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
+            volume.sharedProfile = profile;
+            var colour = profile.Add<UnityEngine.Rendering.Universal.ColorAdjustments>(true);
+            colour.postExposure.Override(-0.5f);
+            colour.contrast.Override(22f);
+            undo.Add(() => { Destroy(volumeObject); Destroy(profile); });
+        }
+
+        if (look.ao)
+        {
+            var feature = AddSsao(out var rendererData);
+            if (feature != null)
+            {
+                undo.Add(() =>
+                {
+                    rendererData.rendererFeatures.Remove(feature);
+                    rendererData.SetDirty();
+                    Destroy(feature);
+                });
+            }
+            else
+            {
+                report.AppendLine("- SSAO could not be added (URP internals changed?)");
+            }
+        }
+
+        if (look.greyHall)
+        {
+            var block = new MaterialPropertyBlock();
+            var touched = new List<(Renderer r, int i)>();
+            foreach (Renderer r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                Material[] mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (!mats[i] || System.Array.IndexOf(HallSurfaces, mats[i].name) < 0 || !mats[i].HasProperty("_BaseColor")) continue;
+                    block.Clear();
+                    r.GetPropertyBlock(block, i);
+                    block.SetColor("_BaseColor", mats[i].GetColor("_BaseColor") * GreyHallFactor);
+                    r.SetPropertyBlock(block, i);
+                    touched.Add((r, i));
+                }
+            }
+
+            report.AppendLine("- grey hall: " + touched.Count + " surfaces");
+            undo.Add(() => { foreach (var t in touched) if (t.r) t.r.SetPropertyBlock(null, t.i); });
+        }
+
+        return () => { for (int i = undo.Count - 1; i >= 0; i--) undo[i](); };
+    }
+
+    /// <summary>Adds URP's SSAO feature to the active renderer for the preview (via reflection: the API is not public).</summary>
+    static UnityEngine.Rendering.Universal.ScriptableRendererFeature AddSsao(out UnityEngine.Rendering.Universal.ScriptableRendererData rendererData)
+    {
+        rendererData = null;
+        try
+        {
+            var asset = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            var field = typeof(UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset).GetField("m_RendererDataList", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var list = field?.GetValue(asset) as UnityEngine.Rendering.Universal.ScriptableRendererData[];
+            if (list == null || list.Length == 0 || list[0] == null) return null;
+            rendererData = list[0];
+            System.Type type = typeof(UnityEngine.Rendering.Universal.ScriptableRendererFeature).Assembly.GetType("UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion");
+            if (type == null) return null;
+            var feature = (UnityEngine.Rendering.Universal.ScriptableRendererFeature)ScriptableObject.CreateInstance(type);
+            feature.name = "SSAO (look preview)";
+
+            // Stronger and wider than the default, so the contact shadows under props are visible
+            object settings = type.GetField("m_Settings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(feature);
+            if (settings != null)
+            {
+                settings.GetType().GetField("Intensity", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.SetValue(settings, 1.6f);
+                settings.GetType().GetField("Radius", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.SetValue(settings, 0.35f);
+            }
+
+            rendererData.rendererFeatures.Add(feature);
+            rendererData.SetDirty();
+            return feature;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[LaserPlaytestBot] SSAO preview failed: " + e.Message);
+            return null;
+        }
     }
 
     IEnumerator TourShot(Camera cam, RenderTexture rt, string name)

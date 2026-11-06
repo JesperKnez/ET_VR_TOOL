@@ -3,7 +3,27 @@ guid: 13611bb4a6d5619458bfe8d827f785f6
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Desk_Stands
+    second: {fileID: 2100000, guid: fdae9d6e3b5ecad45992a523a5a39cc7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Desk_Tabletop
+    second: {fileID: 2100000, guid: b9518173fd8d6844eb3a4fff8a4c5e3e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Monitor Frame
+    second: {fileID: 2100000, guid: 0d815e12218eda8469f802d30e997b28, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Monitor Stand
+    second: {fileID: 2100000, guid: e7e1dd5b41449d440a169a136212a19b, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

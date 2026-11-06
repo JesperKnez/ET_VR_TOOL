@@ -23,6 +23,18 @@ namespace EinsteinTelescope.Lumi
         {
             messages.Add(LumiChatMessage.User(question));
             messages.Add(LumiChatMessage.Assistant(answer));
+            Trim();
+        }
+
+        /// <summary>Something Lumi said without being asked (a level explanation), so questions about it make sense.</summary>
+        public void AddSpoken(string line)
+        {
+            messages.Add(LumiChatMessage.Assistant(line));
+            Trim();
+        }
+
+        private void Trim()
+        {
             int extra = messages.Count - MaxTurns * 2;
             if (extra > 0) messages.RemoveRange(0, extra);
         }

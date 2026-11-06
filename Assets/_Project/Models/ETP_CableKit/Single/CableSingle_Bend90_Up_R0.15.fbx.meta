@@ -3,7 +3,12 @@ guid: 5942552e28291ef42bf7061ead1655ca
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cable_Black
+    second: {fileID: 2100000, guid: ce8922e104eb9c849bd947638587f738, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

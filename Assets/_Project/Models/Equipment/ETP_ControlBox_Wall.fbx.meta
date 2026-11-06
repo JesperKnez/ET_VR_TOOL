@@ -3,7 +3,72 @@ guid: 9e851dacbdb297244b2508061c9a2ff7
 ModelImporter:
   serializedVersion: 24600
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Label_White
+    second: {fileID: 2100000, guid: 0d9f414c5d5efd64aa5db546572fc40b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lamp_Orange
+    second: {fileID: 2100000, guid: 6d930452ba7f8a142a0894163a5b824f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lamp_Teal
+    second: {fileID: 2100000, guid: 864f52292ad562d439b6eb9865724be5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lamp_White
+    second: {fileID: 2100000, guid: 379669a4f1e178249bf4bb27b9d0c93a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Lamp_Yellow
+    second: {fileID: 2100000, guid: 466ad94e0ff180b43a69599e3d63dd52, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_LightGrey
+    second: {fileID: 2100000, guid: e7bd80af51f9ed649bda7ac33ba17fd4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_Red
+    second: {fileID: 2100000, guid: 69f2f88aa26b277409e6f7d3f8e84ed1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_White
+    second: {fileID: 2100000, guid: b5a37322b4583c64abb2f35feb91749b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Paint_Yellow
+    second: {fileID: 2100000, guid: da2856a96f51a6946b7cce36513eaa7e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_DarkGrey
+    second: {fileID: 2100000, guid: d404c2add3c6ee94a99c24407645c282, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Plastic_Teal
+    second: {fileID: 2100000, guid: a7b52531d5cf80f4cbabdbabc85dc92a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Rubber_Black
+    second: {fileID: 2100000, guid: f905cc5bfb4c5264aad209b9cad0777a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Steel_Stainless
+    second: {fileID: 2100000, guid: d610b0c74bba8d047b7fff4a1cd0d06a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
