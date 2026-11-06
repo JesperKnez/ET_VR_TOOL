@@ -85,6 +85,33 @@ namespace EinsteinTelescope.Lumi
             else if (online == null) Debug.LogWarning("[Lumi] The AI config has no DeepSeek API key, so Lumi only gives scripted answers.", this);
         }
 
+        private void Start()
+        {
+            if (config != null && config.UsesOllama && online != null) _ = WarmUpAsync();
+        }
+
+        /// <summary>
+        /// Ollama loads its model on the first request, which can take many seconds (and again after it unloaded an
+        /// idle model). A tiny request at the start of Play loads it, so the first real question is answered quickly.
+        /// </summary>
+        private async Awaitable WarmUpAsync()
+        {
+            float start = Time.realtimeSinceStartup;
+            try
+            {
+                var messages = new List<LumiChatMessage> { LumiChatMessage.System("Reply with OK."), LumiChatMessage.User("OK") };
+                await online.CompleteAsync(messages, destroyCancellationToken);
+                Debug.Log($"[Lumi] Ollama model ready ({Time.realtimeSinceStartup - start:0.0} s).", this);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Lumi] Ollama warm-up failed: " + e.Message, this);
+            }
+        }
+
         /// <summary>Ask Lumi something. Ignored while Lumi is still answering the previous question.</summary>
         public void Ask(string question)
         {
@@ -177,6 +204,7 @@ namespace EinsteinTelescope.Lumi
                 messages.Add(LumiChatMessage.User(question));
 
                 string reply;
+                float modelStart = Time.realtimeSinceStartup;
                 bool fromModel = online != null;
                 try
                 {
@@ -192,12 +220,15 @@ namespace EinsteinTelescope.Lumi
                     fromModel = false;
                 }
 
+                float modelSeconds = Time.realtimeSinceStartup - modelStart;
                 string text = ExtractAction(reply, out string action, out string mirrorName);
                 if (fromModel) history.Add(question, text); // scripted answers ignore the conversation, so they'd only muddle it
                 LastReply = text;
 
                 // Prepare the speech while Lumi still looks thoughtful, so voice and Talk pose start together.
+                float voiceStart = Time.realtimeSinceStartup;
                 AudioClip speech = voice != null ? await voice.PrepareAsync(text, destroyCancellationToken) : null;
+                Debug.Log($"[Lumi] Answer timing: {BrainName} {modelSeconds:0.0} s, voice {Time.realtimeSinceStartup - voiceStart:0.0} s.", this);
 
                 onReply.Invoke(text);
                 SetMode(LumiMode.Talk);

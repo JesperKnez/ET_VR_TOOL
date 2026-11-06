@@ -133,7 +133,7 @@ Alles buiten `_Project` komt uit templates of packages. Pas dat niet aan.
 - Sterren: 3 = binnen de par-tijd en ≤ 1 incident, 2 = binnen 2× par en ≤ 4 incidenten, anders 1. Par-tijd per level in `LaserLevel.parTimeSeconds` (menu `Laser → Set star par times`: 2:00 / 2:00 / 4:00).
 - `LaserMonitorResults` (maakt zichzelf aan bij Play) toont bij afronden een "LEVEL COMPLETE"-scherm over de hele curved monitor met sterren, tijd, incidenten, persoonlijk record en RETRY / NEXT LEVEL. Het zwevende `Results Card` staat midden in de hal en wordt in `Room_Scene` niet meer getoond. Na afronden zijn de spiegels vergrendeld (`MirrorMount.InputLocked`).
 - Testen: `Debug/LaserLevelDevShortcuts.cs` (editor/dev builds): **F6** = level direct voltooien, **F7** = alle spiegels op hun ontwerphoek (level hoort dan binnen enkele seconden voltooid te zijn, anders komt het objective-rapport in de Console).
-- De knoppen LASER (golflengte) en IR VIEWER zijn weg: de laser is altijd groen 532 nm. Uit de scene halen met `Tools → Einstein Telescope → Monitor → Remove LASER and IR VIEWER buttons`; bij Play worden ze ook verborgen.
+- De knoppen LASER (golflengte), IR VIEWER en SHUTTER zijn weg: de laser is altijd groen 532 nm en altijd aan (`LaserControlPad.EnsureVisibleLaser` zet een dichte shutter weer open). Uit de scene halen met `Tools → Einstein Telescope → Monitor → Remove retired buttons (LASER, IR VIEWER, SHUTTER)`; bij Play worden ze ook verborgen.
 
 ### Signaalzuil
 - `SignalTower.cs` op `SignalTower_Wall`/`SignalTower_Base` zet de lenzen (`ET2_Signal_Red/_Amber/_Green`) aan/uit via `_EmissionColor`. Aansturen met `SetState(SignalTower.State.…)`. Herkent de lenzen aan de materiaalnaam, dus die namen niet wijzigen.

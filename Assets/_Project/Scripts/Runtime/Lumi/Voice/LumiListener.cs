@@ -155,7 +155,9 @@ namespace EinsteinTelescope.Lumi
                     return;
                 }
 
+                float heardStart = Time.realtimeSinceStartup;
                 string text = await speech.TranscribeAsync(samples, frequency, channels, destroyCancellationToken);
+                Debug.Log($"[Lumi] Speech to text: {Time.realtimeSinceStartup - heardStart:0.0} s.", this);
                 LastHeard = text;
                 if (string.IsNullOrWhiteSpace(text))
                 {

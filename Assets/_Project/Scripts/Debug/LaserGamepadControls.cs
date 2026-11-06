@@ -12,7 +12,6 @@ using UnityEngine.InputSystem;
 ///   Cross          fine / coarse
 ///   Square         mirror back to its start position
 ///   Triangle       undo
-///   Circle         laser shutter
 ///   Options        next level
 ///   Create         open / close the briefing
 ///   L3             beam path of the active level in the Console (diagnostics)
@@ -69,11 +68,6 @@ public class LaserGamepadControls : MonoBehaviour
         if (!levelManager) levelManager = FindAnyObjectByType<LaserLevelManager>();
         if (!levelManager) return;
 
-        if (pad.buttonEast.wasPressedThisFrame)
-        {
-            var level = levelManager.CurrentLevel;
-            if (level && level.Laser) level.Laser.ToggleShutter();
-        }
         if (pad.startButton.wasPressedThisFrame) levelManager.NextLevel();
         if (pad.selectButton.wasPressedThisFrame) levelManager.ToggleBriefing();
         if (pad.leftStickButton.wasPressedThisFrame) LogBeam(levelManager.CurrentLevel);

@@ -24,6 +24,9 @@ namespace EinsteinTelescope.Laser
         [SerializeField, Range(0f, 1f)] private float masterVolume = 0.6f;
         [SerializeField, Range(0f, 1f)] private float toneVolume = 0.25f;
 
+        // The alignment beeps play for minutes while aiming: keep them well below the other sounds (playtest: "very loud").
+        private const float ToneLoudness = 0.35f;
+
         [Tooltip("Beeps faster and higher as the beam nears the centre of the next iris or detector.")]
         [SerializeField] private bool alignmentTone = true;
 
@@ -181,13 +184,13 @@ namespace EinsteinTelescope.Laser
             }
 
             float error = Mathf.Clamp01(target.WorstBeamOffset / Mathf.Max(target.DetectorRadius, 1e-4f));
-            ToneFrequency = target.IsAligned ? 990f : Mathf.Lerp(880f, 330f, error);
-            m_Tone.pitch = ToneFrequency / 440f;
+            ToneFrequency = target.IsAligned ? 0f : Mathf.Lerp(660f, 330f, error);   // lower top note: 880 Hz was shrill
+            if (ToneFrequency > 0f) m_Tone.pitch = ToneFrequency / 440f;
 
             bool on;
             if (target.IsAligned)
             {
-                on = true;
+                on = false;   // aligned: silence (the "aligned" chime already plays once); a steady 990 Hz tone was very loud
             }
             else
             {
@@ -196,7 +199,8 @@ namespace EinsteinTelescope.Laser
                 on = m_BeepPhase < 0.5f;
             }
 
-            Fade(m_Tone, on ? toneVolume * masterVolume : 0f, dt, 0.015f, toneVolume * masterVolume);
+            float level = toneVolume * masterVolume * ToneLoudness;
+            Fade(m_Tone, on ? level : 0f, dt, 0.015f, level);
         }
 
         private LaserTarget NextTarget()
@@ -303,8 +307,9 @@ namespace EinsteinTelescope.Laser
 
                 float local = t < buzz ? t : t - buzz - gap;
                 float edge = Mathf.Clamp01(local / 0.005f) * Mathf.Clamp01((buzz - local) / 0.005f);
-                float square = Mathf.Sin(2f * Mathf.PI * 220f * t) >= 0f ? 1f : -1f;
-                data[i] = 0.35f * edge * square;
+                // Soft buzz: a sine with a little third harmonic instead of a harsh square wave
+                float wave = Mathf.Sin(2f * Mathf.PI * 220f * t) + 0.25f * Mathf.Sin(2f * Mathf.PI * 660f * t);
+                data[i] = 0.22f * edge * wave;
             }
 
             return Clip("Warning Buzz", data);

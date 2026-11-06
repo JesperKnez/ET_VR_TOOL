@@ -6,13 +6,15 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 
 /// <summary>
-/// Tools > Einstein Telescope > Monitor > Remove LASER and IR VIEWER buttons
+/// Tools > Einstein Telescope > Monitor > Remove retired buttons (LASER, IR VIEWER, SHUTTER)
 /// The players always use the visible green 532 nm alignment laser, so the LASER (532 / 1064 nm) and
-/// IR VIEWER buttons on the control pad (Panel_DPad > Pad Canvas) are no longer needed.
+/// IR VIEWER buttons on the control pad (Panel_DPad > Pad Canvas) are no longer needed, and the SHUTTER button
+/// (the laser is always on) only confused players.
 /// This removes them from the open scene (with Undo), clears their label references on the
 /// LaserControlPad, and re-centres the buttons left in their row with the original spacing.
 /// In Room_Scene the bottom row was RESET | SHUTTER | LASER | IR VIEWER (x = -213, -71, 71, 213);
-/// afterwards it is RESET | SHUTTER (x = -71, 71). Safe to run again: it does nothing if the buttons are gone.
+/// after the first version it was RESET | SHUTTER (x = -71, 71); now only RESET is left, centred (x = 0).
+/// Safe to run again: it does nothing if the buttons are gone.
 /// Save the scene afterwards.
 /// </summary>
 public static class MonitorButtonCleanup
@@ -20,7 +22,7 @@ public static class MonitorButtonCleanup
     // Buttons whose anchored y differs less than this (in canvas pixels) are in the same row.
     const float RowTolerance = 1f;
 
-    [MenuItem("Tools/Einstein Telescope/Monitor/Remove LASER and IR VIEWER buttons")]
+    [MenuItem("Tools/Einstein Telescope/Monitor/Remove retired buttons (LASER, IR VIEWER, SHUTTER)")]
     static void RemoveButtons()
     {
         var allButtons = Object.FindObjectsByType<LaserPadButton>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -33,13 +35,13 @@ public static class MonitorButtonCleanup
 
         if (retired.Count == 0)
         {
-            Debug.Log("[MonitorButtonCleanup] No LASER or IR VIEWER buttons found in the open scene. Nothing to do.");
+            Debug.Log("[MonitorButtonCleanup] No retired buttons (LASER, IR VIEWER, SHUTTER) found in the open scene. Nothing to do.");
             return;
         }
 
-        Undo.SetCurrentGroupName("Remove LASER and IR VIEWER buttons");
+        Undo.SetCurrentGroupName("Remove retired buttons");
         int undoGroup = Undo.GetCurrentGroup();
-        var report = new StringBuilder("[MonitorButtonCleanup] Removed the LASER and IR VIEWER buttons.\n");
+        var report = new StringBuilder("[MonitorButtonCleanup] Removed the retired buttons (LASER, IR VIEWER, SHUTTER).\n");
         var dirtyScenes = new HashSet<UnityEngine.SceneManagement.Scene>();
 
         // 1. Work out the new layout of each affected row before anything is removed.
@@ -67,6 +69,7 @@ public static class MonitorButtonCleanup
             var so = new SerializedObject(pad);
             ClearReference(so, "wavelengthText");
             ClearReference(so, "infraredText");
+            ClearReference(so, "shutterText");
             so.ApplyModifiedProperties();
             dirtyScenes.Add(pad.gameObject.scene);
         }

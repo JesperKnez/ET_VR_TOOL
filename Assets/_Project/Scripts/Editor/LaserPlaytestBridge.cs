@@ -8,6 +8,7 @@ using UnityEngine;
 ///   refresh                 import changed scripts and assets (= what Unity does when you click on its window)
 ///   play [levels=1,2] [nodir] [noplay]   enter Play Mode; LaserPlaytestBot plays, writes report.md and stops Play Mode
 ///   menu Tools/...          run an editor menu item (scene changes are not saved)
+///   save                    save the open scenes and assets
 ///   stop                    leave Play Mode
 /// Logs/Playtest/bridge.txt says what the bridge last did. Logs/ is not in git.
 /// </summary>
@@ -59,6 +60,12 @@ static class LaserPlaytestBridge
             string item = command.Substring(5).Trim();
             bool ok = EditorApplication.ExecuteMenuItem(item);
             Status((ok ? "menu done: " : "menu NOT found: ") + item);
+        }
+        else if (command.StartsWith("save"))
+        {
+            bool saved = UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+            AssetDatabase.SaveAssets();
+            Status(saved ? "saved open scenes and assets" : "save FAILED");
         }
         else if (command.StartsWith("stop"))
         {

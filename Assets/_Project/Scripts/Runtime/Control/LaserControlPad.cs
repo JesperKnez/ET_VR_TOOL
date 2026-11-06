@@ -14,7 +14,7 @@ namespace EinsteinTelescope.Laser
         NextMirror,
         ToggleFineMode,
         ResetMirror,
-        ToggleShutter,
+        ToggleShutter,          // Retired: the SHUTTER button was removed; the laser is always on.
         ToggleInfraredViewer,   // Retired: the IR VIEWER button was removed. Kept so serialized ints do not shift.
         ToggleWavelength,       // Retired: the LASER (532 / 1064 nm) button was removed. Kept so serialized ints do not shift.
         NextLevel,
@@ -55,6 +55,7 @@ namespace EinsteinTelescope.Laser
         [SerializeField] private Text mirrorNameText = null;
         [SerializeField] private Text stepModeText = null;
         [SerializeField] private Text anglesText = null;
+        [Tooltip("Retired: label of the removed SHUTTER button. Hidden at runtime if still assigned.")]
         [SerializeField] private Text shutterText = null;
 
         [Tooltip("Retired: label of the removed IR VIEWER button. Hidden at runtime if still assigned.")]
@@ -89,21 +90,27 @@ namespace EinsteinTelescope.Laser
             }
         }
 
-        /// <summary>True for the actions of the removed LASER and IR VIEWER buttons. They do nothing any more.</summary>
+        /// <summary>True for the actions of the removed LASER, IR VIEWER and SHUTTER buttons. They do nothing any more.</summary>
         public static bool IsRetiredAction(LaserPadAction action)
         {
-            return action == LaserPadAction.ToggleInfraredViewer || action == LaserPadAction.ToggleWavelength;
+            return action == LaserPadAction.ToggleInfraredViewer || action == LaserPadAction.ToggleWavelength || action == LaserPadAction.ToggleShutter;
         }
 
         /// <summary>
         /// Makes sure a laser is the visible green alignment laser: an invisible (e.g. 1064 nm infrared)
-        /// wavelength is set back to 532 nm. Cheap enough to call every frame.
+        /// wavelength is set back to 532 nm, and a closed shutter is opened (there is no shutter button any more).
+        /// Cheap enough to call every frame.
         /// </summary>
         public static void EnsureVisibleLaser(LaserEmitter emitter)
         {
             if (emitter != null && !LaserOptics.IsHumanVisible(emitter.WavelengthNm))
             {
                 emitter.SetWavelength(AlignmentWavelengthNm);
+            }
+
+            if (emitter != null && !emitter.IsShutterOpen)
+            {
+                emitter.SetShutter(true);
             }
         }
 
@@ -129,7 +136,7 @@ namespace EinsteinTelescope.Laser
                 case LaserPadAction.NextMirror: panel?.SelectNext(); break;
                 case LaserPadAction.ToggleFineMode: panel?.ToggleFineMode(); break;
                 case LaserPadAction.ResetMirror: panel?.ResetSelectedToStart(); break;
-                case LaserPadAction.ToggleShutter: Laser?.ToggleShutter(); break;
+                case LaserPadAction.ToggleShutter: break;          // Retired: the shutter stays open (the button only confused players).
                 case LaserPadAction.ToggleInfraredViewer: break;   // Retired: there is no IR viewer any more.
                 case LaserPadAction.ToggleWavelength: break;       // Retired: the laser stays at 532 nm.
                 case LaserPadAction.NextLevel: if (levelManager != null) levelManager.NextLevel(); break;
@@ -209,6 +216,7 @@ namespace EinsteinTelescope.Laser
 
             HideLabel(infraredText);
             HideLabel(wavelengthText);
+            HideLabel(shutterText);
         }
 
         private static void HideLabel(Text label)
