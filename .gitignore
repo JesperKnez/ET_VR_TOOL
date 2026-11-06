@@ -117,9 +117,11 @@ InitTestScene*.unity*
 # Apple
 .DS_Store
 
-# Local secrets (API keys): never commit/[Aa]ssets/_Project/Secrets//[Aa]ssets/_Project/Secrets.meta
+# Local secrets (API keys): never commit. The configs live in Assets/Secrets/ (LumiAIConfig, LumiVoiceConfig).
 /[Aa]ssets/_Project/Secrets/
 /[Aa]ssets/_Project/Secrets.meta
+/[Aa]ssets/Secrets/
+/[Aa]ssets/Secrets.meta
 
 # Screenshots van ScreenshotToClipboard (F8/F9/F10)
 /Screenshots/

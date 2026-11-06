@@ -10,7 +10,7 @@ using UnityEngine.InputSystem;
 /// Plays the laser levels by itself, the way a player would, and writes down what it sees. For finding flaws in the
 /// mirror camera and the monitor without a headset. Creates itself on Play (editor and development builds only).
 ///
-/// Start: press F8 in Play Mode, or let LaserPlaytestBridge (editor) start Play Mode with an "autorun" file.
+/// Start: press F11 in Play Mode, or let LaserPlaytestBridge (editor) start Play Mode with an "autorun" file.
 /// Output: Logs/Playtest/report.md plus screenshots of the curved monitor and the mirror camera (PNG).
 ///
 /// Per level it does two things:
@@ -59,7 +59,7 @@ public class LaserPlaytestBot : MonoBehaviour
 
     void Update()
     {
-        if (!running && Keyboard.current != null && Keyboard.current.f8Key.wasPressedThisFrame)
+        if (!running && Keyboard.current != null && Keyboard.current.f11Key.wasPressedThisFrame)
         {
             StartCoroutine(Run("play", false));
         }
@@ -102,6 +102,14 @@ public class LaserPlaytestBot : MonoBehaviour
         }
 
         List<int> levels = ParseLevels(command);
+        if (command.Contains("viewcheck"))
+        {
+            yield return ViewCheck(levels);
+            report.AppendLine("**Problems flagged: " + problems + "**");
+            Finish(autorun);
+            yield break;
+        }
+
         bool directionTest = !command.Contains("nodir");
         bool play = !command.Contains("noplay");
         Time.timeScale = TIME_SCALE;
@@ -524,6 +532,67 @@ public class LaserPlaytestBot : MonoBehaviour
     {
         problems++;
         report.AppendLine("  - ⚠ " + what);
+    }
+
+    // ----- View check: every mirror in every mirror-camera view, watching for errors -----------------------------
+    // Milan saw "one of the views in level 3" break the XR Device Simulator. This switches through all views for all
+    // mirrors and writes down errors/exceptions, which camera Camera.main is, and whether the simulated XR devices exist.
+
+    readonly List<string> caughtErrors = new List<string>();
+
+    void OnLog(string condition, string stackTrace, LogType type)
+    {
+        if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert)
+        {
+            string firstFrame = string.IsNullOrEmpty(stackTrace) ? "" : stackTrace.Split('\n')[0];
+            caughtErrors.Add(type + ": " + condition + (firstFrame.Length > 0 ? "  @ " + firstFrame : ""));
+        }
+    }
+
+    IEnumerator ViewCheck(List<int> levels)
+    {
+        report.AppendLine("## View check");
+        Application.logMessageReceived += OnLog;
+        foreach (int index in levels)
+        {
+            manager.LoadLevel(index);
+            yield return new WaitForSecondsRealtime(1.5f);
+            if (manager.IsBriefingOpen) manager.ToggleBriefing();
+            panel = MirrorControlPanel.FirstActive;
+            report.AppendLine("### Level " + (index + 1) + ": " + manager.CurrentTitle);
+            for (int m = 0; m < panel.MirrorCount; m++)
+            {
+                panel.SelectMirror(m);
+                for (int v = 0; v < mirrorCamera.ViewCount; v++)
+                {
+                    caughtErrors.Clear();
+                    mirrorCamera.SelectView(v);
+                    yield return new WaitForSecondsRealtime(0.6f);
+                    Camera main = Camera.main;
+                    int simulated = 0;
+                    foreach (var device in UnityEngine.InputSystem.InputSystem.devices)
+                    {
+                        if (device.layout.StartsWith("XRSimulated")) simulated++;
+                    }
+
+                    Camera feed = mirrorCamera.FeedCamera;
+                    string line = "- " + panel.SelectedMirror.DisplayName + ", view " + v + " (" + mirrorCamera.CurrentMode + ")" +
+                                  " | Camera.main: " + (main ? main.name + (main.orthographic ? " ORTHOGRAPHIC" : "") + (main.targetTexture ? " RENDERS TO TEXTURE" : "") : "none") +
+                                  " | feed camera tag " + (feed ? feed.tag : "-") + ", enabled " + (feed && feed.enabled) +
+                                  " | simulated XR devices " + simulated +
+                                  " | errors " + caughtErrors.Count;
+                    report.AppendLine(line);
+                    foreach (string error in caughtErrors.GetRange(0, Mathf.Min(3, caughtErrors.Count)))
+                    {
+                        report.AppendLine("    " + error);
+                    }
+
+                    if (caughtErrors.Count > 0 || !main || main.orthographic || main.targetTexture) Flag("level " + (index + 1) + ", " + panel.SelectedMirror.DisplayName + ", view " + v + ": see above");
+                }
+            }
+        }
+
+        Application.logMessageReceived -= OnLog;
     }
 
     // ----- Look-around tour: screenshots of the scene from many places ---------------------------------------
