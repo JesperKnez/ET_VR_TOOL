@@ -81,6 +81,13 @@ public class LaserPlaytestBot : MonoBehaviour
         report.AppendLine();
 
         yield return new WaitForSecondsRealtime(2f);   // let the scene start (lasers, levels, monitor)
+        if (command.Contains("poster"))
+        {
+            yield return PosterShots.Run(report);   // reference pictures for the project poster, in Poster/References
+            Finish(autorun);
+            yield break;
+        }
+
         if (command.Contains("looks"))
         {
             yield return LookTour();

@@ -1,0 +1,39 @@
+ET_VR_TOOL is licensed in two parts.
+
+1. Source code (all .cs, .shader, .hlsl and .shadergraph files under Assets/_Project/, and
+   everything under Tools/) is licensed under the MIT License below.
+
+2. Our own assets (models, textures, materials, scenes, prefabs, audio and other non-code files
+   under Assets/_Project/) are licensed under the Creative Commons Attribution-NonCommercial 4.0
+   International License (CC BY-NC 4.0): https://creativecommons.org/licenses/by-nc/4.0/
+   You may share and adapt them for non-commercial purposes, as long as you credit
+   "ET_VR_TOOL team, Zuyd Hogeschool" and link to this repository.
+
+Third-party content keeps its own license and is not covered by this file, including:
+Unity package samples (Assets/Samples/, Assets/XRI/, Assets/XR/), the Unity VR template
+(Assets/VRTemplateAssets/), TextMesh Pro (Assets/TextMesh Pro/), the Whisper model
+(Assets/StreamingAssets/Whisper/, MIT) and ambientCG textures (CC0).
+
+-------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 ET_VR_TOOL team, Zuyd Hogeschool
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
