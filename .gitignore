@@ -132,3 +132,8 @@ InitTestScene*.unity*
 
 # IDE settings (Rider / IntelliJ), also inside Assets
 **/.idea/
+
+# Poster-screenshots en Unity Performance Testing-output: niet in git
+/Poster/
+/[Aa]ssets/Resources/
+/[Aa]ssets/Resources.meta
